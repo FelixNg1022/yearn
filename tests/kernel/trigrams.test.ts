@@ -5,7 +5,7 @@ import {
   trigramBits,
   trigramByXianTian,
   xianTianOf,
-} from '../src/divination/trigrams.ts'
+} from '../../src/kernel/trigrams.ts'
 
 describe('trigram helpers', () => {
   test('先天 order maps 1-8 to 乾兌離震巽坎艮坤', () => {

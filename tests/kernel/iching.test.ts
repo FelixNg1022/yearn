@@ -5,8 +5,8 @@ import {
   hexagramByBinary,
   hexagramByNum,
   hexagramByTrigrams,
-} from '../src/divination/iching.ts'
-import { hexagramBinary } from '../src/divination/trigrams.ts'
+} from '../../src/kernel/iching.ts'
+import { hexagramBinary } from '../../src/kernel/trigrams.ts'
 
 describe('hexagrams.json integrity', () => {
   const hexagrams = allHexagrams()

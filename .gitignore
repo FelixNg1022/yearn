@@ -39,9 +39,12 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Build plan (contains private drafts — excluded from public push)
 Photon Residency 2 Build Plan.md
 
-# SQLite database + logs
+# SQLite database + logs (v1, kept for local reuse)
 yun.db
 yun.db-journal
 yun.db-shm
 yun.db-wal
 yun.log
+
+# Large media (kept locally, not in git)
+demo.mov

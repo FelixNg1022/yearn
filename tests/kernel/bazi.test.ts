@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { computeBazi } from '../src/divination/bazi.ts'
+import { computeBazi } from '../../src/kernel/bazi.ts'
 
 describe('computeBazi', () => {
   test('Felix birth 2002-10-22 18:00 Shenzhen (UTC+8) yields 壬午 庚戌 癸亥 辛酉', () => {

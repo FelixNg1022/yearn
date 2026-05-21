@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { castMeihua } from '../src/divination/meihua.ts'
-import { flipLine, hexagramBinary } from '../src/divination/trigrams.ts'
-import { hexagramByNum } from '../src/divination/iching.ts'
+import { castMeihua } from '../../src/kernel/meihua.ts'
+import { flipLine, hexagramBinary } from '../../src/kernel/trigrams.ts'
+import { hexagramByNum } from '../../src/kernel/iching.ts'
 
 describe('castMeihua', () => {
   test('output is deterministic for a fixed Date', () => {

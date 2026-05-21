@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { castLiuren } from '../src/divination/liuren.ts'
+import { castLiuren } from '../../src/kernel/liuren.ts'
 
 describe('castLiuren', () => {
   // Tests use `new Date(Y, M-1, D, H, Min)` — these construct wall-clock times
