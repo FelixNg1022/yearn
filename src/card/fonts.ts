@@ -19,9 +19,9 @@ let _fonts: FontData[] | null = null;
 export async function loadFonts(): Promise<FontData[]> {
   if (_fonts) return _fonts;
   const [inter, noto, mono] = await Promise.all([
-    loadFont("inter-400.woff2"),
-    loadFont("noto-sans-sc-400.woff2"),
-    loadFont("jetbrains-mono-400.woff2"),
+    loadFont("inter-400.woff"),
+    loadFont("noto-sans-sc-400.woff"),
+    loadFont("jetbrains-mono-400.woff"),
   ]);
   _fonts = [
     { name: "Inter", data: inter, weight: 400, style: "normal" },
