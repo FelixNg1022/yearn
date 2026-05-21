@@ -1,6 +1,5 @@
 {
-  "name": "yun",
-  "description": "An iMessage oracle that does the real Chinese numerology math, then interprets it — and tracks whether it was right.",
+  "name": "yun-hosted",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
@@ -11,14 +10,18 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "@types/bun": "latest",
+    "@types/react": "^19.2.15",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
-    "@photon-ai/imessage-kit": "^2.1.2",
-    "lunar-typescript": "^1.8.6"
+    "@libsql/client": "^0.17.3",
+    "@resvg/resvg-js": "^2.6.2",
+    "lunar-typescript": "^1.8.6",
+    "react": "^19.2.6",
+    "satori": "^0.26.0",
+    "spectrum-ts": "^1.9.2",
+    "ulidx": "^2.4.1"
   }
 }
