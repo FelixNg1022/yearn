@@ -6,7 +6,7 @@ import { handleOnboarding } from "./onboarding.ts";
 import { handleCommand } from "./commands.ts";
 import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
-import { renderCastCard } from "./card/render.ts";
+import { renderCastCard, renderProfileCard, renderDailyReadingCard } from "./card/render.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
@@ -33,14 +33,14 @@ export async function route(
     await db.upsertUser({
       phone,
       lang,
-      onboarding_state: "pending_date",
+      onboarding_state: "pending_name",
       created_at: now,
       last_seen_at: now,
       readings_today: 0,
       readings_today_reset_at: now,
     });
     user = (await db.getUser(phone))!;
-    await sendText(phone, STRINGS.welcome[lang]);
+    await sendText(phone, STRINGS.askName[lang]);
     return;
   }
 
@@ -59,6 +59,10 @@ export async function route(
 
   if (trimmed.startsWith("/")) {
     const result = await handleCommand(trimmed, user, db);
+    if (result.sideEffect === "render_profile_card") {
+      await sendProfileCard(phone, user, deps);
+      return;
+    }
     await sendText(phone, result.reply);
     return;
   }
@@ -66,6 +70,11 @@ export async function route(
   if (user.onboarding_state !== "complete") {
     const reply = await handleOnboarding(user, trimmed, db);
     await sendText(phone, reply);
+    // Check if onboarding just completed — if so, send profile card
+    const refreshedUser = await db.getUser(phone);
+    if (refreshedUser && refreshedUser.onboarding_state === "complete") {
+      await sendProfileCard(phone, refreshedUser, deps);
+    }
     return;
   }
 
@@ -120,16 +129,42 @@ export async function route(
     return;
   }
 
-  const followUpMs = config.demoFollowUpSeconds() !== undefined
-    ? config.demoFollowUpSeconds()! * 1000
-    : config.followUpDays() * 24 * 60 * 60 * 1000;
-
+  const demoSecs = config.demoFollowUpSeconds();
   const result = await runQuery(phone, trimmed, user, receivedAt, {
     db: deps.db,
     llm: deps.llm,
-    followUpMs,
+    defaultFollowUpMs: config.followUpDays() * 24 * 60 * 60 * 1000,
+    bufferDays: config.followUpBufferDays(),
+    demoFollowUpMs: demoSecs !== undefined ? demoSecs * 1000 : undefined,
+    useLlmHorizonFallback: config.useLlmHorizonFallback(),
   });
 
+  if (result.question_type === "specific") {
+    // Text-only reply for specific probability questions — no card.
+    await sendText(phone, result.reply);
+    return;
+  }
+
+  // General question — render Daily Reading Card.
+  if (result.daily_scores) {
+    const displayName = user.name ?? phone.slice(-4);
+    const png = await renderDailyReadingCard({
+      question: trimmed,
+      date: receivedAt,
+      avoid: result.daily_scores.avoid,
+      luck: result.daily_scores.luck,
+      relationship: result.daily_scores.relationship,
+      academic: result.daily_scores.academic,
+      career: result.daily_scores.career,
+      general: result.daily_scores.general,
+      name: displayName,
+      lang: user.lang,
+    });
+    await sendCard(phone, result.reply, png);
+    return;
+  }
+
+  // Fallback: use classic cast card if somehow daily_scores is null for general.
   const png = await renderCastCard({
     question: trimmed,
     cast: result.kernel,
@@ -138,8 +173,48 @@ export async function route(
     timestamp: receivedAt,
     mode: "cast",
   });
-
   await sendCard(phone, result.reply, png);
+}
+
+async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
+  const { db, llm } = deps;
+  const displayName = user.name ?? phone.slice(-4);
+  const bazi = user.bazi_pillars ? JSON.parse(user.bazi_pillars) : null;
+
+  if (!bazi) {
+    await sendText(phone, user.lang === "zh"
+      ? "还没有八字数据，请先完成入门设置。"
+      : "No 八字 on file yet — complete setup first.");
+    return;
+  }
+
+  // Get lucky attributes and a broad interpretation in parallel.
+  const recentReadings = await db.getRecentReadings(phone, 3);
+  const [luckyAttrs, broadReading] = await Promise.all([
+    llm.getLuckyAttributes(bazi, user.lang),
+    llm.interpret({
+      question: user.lang === "zh" ? "请给我一个关于近期整体运势的宏观解读。" : "Please give me a broad projection of my overall fortune for the near future.",
+      lang: user.lang,
+      kernel: {},
+      user,
+      recent: recentReadings,
+    }),
+  ]);
+
+  const png = await renderProfileCard({
+    name: displayName,
+    luckyNumber: luckyAttrs.number,
+    luckyColor: luckyAttrs.color,
+    luckyColorHex: luckyAttrs.colorHex,
+    luckyStone: luckyAttrs.stone,
+    reading: broadReading,
+    lang: user.lang,
+  });
+
+  const caption = user.lang === "zh"
+    ? `你的幸运数字是 ${luckyAttrs.number}，幸运颜色是 ${luckyAttrs.color}，幸运宝石是 ${luckyAttrs.stone}。`
+    : `Your lucky number is ${luckyAttrs.number}, lucky color is ${luckyAttrs.color}, lucky stone is ${luckyAttrs.stone}.`;
+  await sendCard(phone, caption, png);
 }
 
 function outcomeAck(outcome: "yes" | "no" | "mixed", lang: "en" | "zh"): string {

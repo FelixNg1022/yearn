@@ -2,7 +2,7 @@
 import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import React from "react";
-import { CardTemplate, type CardProps } from "./template.tsx";
+import { CardTemplate, ProfileCardTemplate, DailyReadingCardTemplate, type CardProps, type ProfileCardProps, type DailyReadingCardProps } from "./template.tsx";
 import { loadFonts } from "./fonts.ts";
 
 export interface RenderInput {
@@ -62,25 +62,79 @@ function extractCardProps(input: RenderInput): CardProps {
   };
 }
 
-export async function renderCastCard(input: RenderInput): Promise<Buffer> {
+async function satoriToPng(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
   const fonts = await loadFonts();
-  const props = extractCardProps(input);
-
-  const svg = await satori(
-    React.createElement(CardTemplate, props),
-    {
-      width: 1080,
-      height: 1350,
-      fonts: fonts.map((f) => ({
-        name: f.name,
-        data: f.data,
-        weight: f.weight,
-        style: f.style,
-      })),
-    },
-  );
-
-  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 1080 } });
+  const svg = await satori(element, {
+    width,
+    height,
+    fonts: fonts.map((f) => ({
+      name: f.name,
+      data: f.data,
+      weight: f.weight,
+      style: f.style,
+    })),
+  });
+  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: width } });
   const pngData = resvg.render();
   return Buffer.from(pngData.asPng());
+}
+
+export async function renderCastCard(input: RenderInput): Promise<Buffer> {
+  const props = extractCardProps(input);
+  return satoriToPng(React.createElement(CardTemplate, props), 1080, 1350);
+}
+
+export interface ProfileRenderInput {
+  name: string;
+  luckyNumber: number;
+  luckyColor: string;
+  luckyColorHex: string;
+  luckyStone: string;
+  reading: string;
+  lang: "en" | "zh";
+}
+
+export async function renderProfileCard(input: ProfileRenderInput): Promise<Buffer> {
+  const props: ProfileCardProps = {
+    name: input.name,
+    luckyNumber: input.luckyNumber,
+    luckyColor: input.luckyColor,
+    luckyColorHex: input.luckyColorHex,
+    luckyStone: input.luckyStone,
+    reading: input.reading,
+    lang: input.lang,
+  };
+  return satoriToPng(React.createElement(ProfileCardTemplate, props), 1080, 1350);
+}
+
+export interface DailyRenderInput {
+  question: string;
+  date: Date;
+  avoid: string;
+  luck: string;
+  relationship: number;
+  academic: number;
+  career: number;
+  general: number;
+  name: string;
+  lang: "en" | "zh";
+}
+
+export async function renderDailyReadingCard(input: DailyRenderInput): Promise<Buffer> {
+  const dateStr = input.date.toLocaleDateString(input.lang === "zh" ? "zh-CN" : "en-US", {
+    year: "numeric", month: "long", day: "numeric",
+  });
+  const props: DailyReadingCardProps = {
+    question: input.question,
+    date: dateStr,
+    avoid: input.avoid,
+    luck: input.luck,
+    relationship: input.relationship,
+    academic: input.academic,
+    career: input.career,
+    general: input.general,
+    name: input.name,
+    lang: input.lang,
+  };
+  return satoriToPng(React.createElement(DailyReadingCardTemplate, props), 1080, 1350);
 }

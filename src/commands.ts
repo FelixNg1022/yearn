@@ -5,7 +5,7 @@ import { STRINGS } from "./lang.ts";
 
 export interface CommandResult {
   reply: string;
-  sideEffect?: "set_delete_pending";
+  sideEffect?: "set_delete_pending" | "render_profile_card";
 }
 
 export async function handleCommand(
@@ -40,9 +40,12 @@ export async function handleCommand(
       return { reply: arg === "zh" ? "已切换为中文。" : "switched to English." };
     }
 
+    case "/profile":
+      return { reply: "__RENDER_PROFILE_CARD__", sideEffect: "render_profile_card" };
+
     case "/setup":
-      await db.setOnboardingState(user.phone, "pending_date");
-      return { reply: STRINGS.welcome[lang] };
+      await db.setOnboardingState(user.phone, "pending_name");
+      return { reply: STRINGS.askName[lang] };
 
     case "/delete":
       await db.setDeletePending(user.phone, 1);
@@ -58,6 +61,7 @@ function help(lang: Lang): string {
     return [
       "运 — 命令一览",
       "/help        这条帮助",
+      "/profile     查看你的个人卦盘",
       "/history     最近 5 次卦",
       "/stats       总次数 + 应验率",
       "/methods     三种方法简介",
@@ -71,6 +75,7 @@ function help(lang: Lang): string {
   return [
     "运 — commands",
     "/help        this message",
+    "/profile     view your profile card",
     "/history     last 5 readings",
     "/stats       total count + hit rate",
     "/methods     short intro to each method",

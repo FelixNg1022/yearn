@@ -56,9 +56,13 @@ export function resolveTimezone(location: string): string | null {
 }
 
 export const STRINGS = {
+  askName: {
+    en: "Welcome to 运. What's your name?",
+    zh: "欢迎使用运。请问你的名字是？",
+  },
   welcome: {
-    en: "Welcome to 运. To cast your readings, I need three things. First — what's your birth date? (e.g., October 22, 2002 or 2002-10-22)",
-    zh: "欢迎来到运。帮我确认三件事，才能起卦。首先——你的出生日期是什么？（如：2002年10月22日 或 2002-10-22）",
+    en: "Great! Now, what's your birth date? (e.g., October 22, 2002 or 2002-10-22)",
+    zh: "好的！那你的出生日期是什么？（如：2002年10月22日 或 2002-10-22）",
   },
   askTime: {
     en: "Got it. What time were you born? (e.g., 6:00 PM or 18:00) — or say 'skip' if you don't know.",

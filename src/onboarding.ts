@@ -89,6 +89,13 @@ export async function handleOnboarding(
   const lang: Lang = user.lang;
 
   switch (user.onboarding_state) {
+    case "pending_name": {
+      const name = text.trim().slice(0, 50);
+      if (!name) return STRINGS.askName[lang];
+      await db.setOnboardingState(user.phone, "pending_date", { name });
+      return STRINGS.welcome[lang];
+    }
+
     case "pending_date": {
       const date = parseDate(text);
       if (!date) return STRINGS.invalidDate[lang];
