@@ -1,0 +1,19 @@
+app = "yun-hosted"
+primary_region = "sea"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  # No public HTTP — Spectrum connects outbound via gRPC
+  # Fly needs at least one port; bind to internal only
+  internal_port = 8080
+  force_https = false
+  auto_stop_machines = false
+  auto_start_machines = true
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
