@@ -3,6 +3,14 @@ import type { Db } from "./db.ts";
 import type { Lang } from "./lang.ts";
 import { sendFollowUp } from "./spectrum/send.ts";
 
+const DAY_MS = 86_400_000;
+
+/** Days between `createdAt` and `now`, rounded to the nearest day, min 1. */
+export function elapsedDays(createdAt: number, now: number): number {
+  const diff = Math.max(0, now - createdAt);
+  return Math.max(1, Math.round(diff / DAY_MS));
+}
+
 export function buildFollowUpText(question: string, lang: Lang, days: number): string {
   const q = question.length > 80 ? question.slice(0, 77) + "…" : question;
   return lang === "zh"
@@ -13,7 +21,6 @@ export function buildFollowUpText(question: string, lang: Lang, days: number): s
 export interface SchedulerOptions {
   db: Db;
   intervalMs: number;
-  followUpDays: number;
 }
 
 export interface Scheduler {
@@ -23,7 +30,7 @@ export interface Scheduler {
 }
 
 export function createScheduler(opts: SchedulerOptions): Scheduler {
-  const { db, intervalMs, followUpDays } = opts;
+  const { db, intervalMs } = opts;
   let handle: ReturnType<typeof setInterval> | null = null;
 
   const tick = async (): Promise<void> => {
@@ -32,8 +39,11 @@ export function createScheduler(opts: SchedulerOptions): Scheduler {
     for (const reading of pending) {
       const user = await db.getUser(reading.phone);
       const lang: Lang = user?.lang ?? reading.lang;
+      // Use real elapsed time from the cast, so the message ("N days ago...")
+      // is accurate even when the follow-up delay was derived per-question.
+      const days = elapsedDays(reading.created_at, now);
       try {
-        await sendFollowUp(reading.phone, reading.question, lang, followUpDays);
+        await sendFollowUp(reading.phone, reading.question, lang, days);
         await db.markFollowedUp(reading.id);
       } catch (err) {
         console.error(`[scheduler] failed DM for reading ${reading.id}:`, err);

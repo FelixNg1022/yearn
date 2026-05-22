@@ -9,7 +9,6 @@ import { config } from "./config.ts";
 async function main(): Promise<void> {
   const dbUrl = config.tursoUrl();
   const dbToken = config.tursoToken();
-  const followUpDays = config.followUpDays();
   const demoSecs = config.demoFollowUpSeconds();
   const schedulerMs = config.schedulerIntervalSeconds() * 1000;
 
@@ -20,11 +19,14 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({
     ts: new Date().toISOString(), level: "INFO",
     msg: "运 online",
+    default_follow_up_days: config.followUpDays(),
+    follow_up_buffer_days: config.followUpBufferDays(),
+    llm_horizon_fallback: config.useLlmHorizonFallback(),
     demo_follow_up_seconds: demoSecs ?? null,
     scheduler_interval_ms: schedulerMs,
   }));
 
-  const scheduler = createScheduler({ db, intervalMs: schedulerMs, followUpDays });
+  const scheduler = createScheduler({ db, intervalMs: schedulerMs });
   scheduler.start();
 
   for await (const [space, message] of app.messages) {

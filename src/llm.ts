@@ -1,9 +1,10 @@
 // src/llm.ts
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import type { Lang, ReadingRow, UserRow } from "./db.ts";
 import { config } from "./config.ts";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "deepseek/deepseek-v4-flash:free";
+const BASE_URL = "https://openrouter.ai/api/v1";
 
 const SYSTEM_PROMPT = `You are 运 (yùn), a Gen Z fortune oracle on iMessage. You interpret ancient Chinese divination casts — the hexagrams and palaces are computed for you, your job is to read them.
 
@@ -87,60 +88,63 @@ Rules:
 - Clamp anything beyond 30 days to 30. Never return negative numbers.
 - Output JSON only. No code fences. No commentary.`;
 
+function parseJson<T>(text: string): T | null {
+  try {
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(cleaned) as T;
+  } catch {
+    return null;
+  }
+}
+
 export function createLlm(): LlmClient {
-  const anthropic = new Anthropic({ apiKey: config.anthropicApiKey() });
+  const client = new OpenAI({
+    apiKey: config.openRouterApiKey(),
+    baseURL: BASE_URL,
+  });
+
+  async function chat(system: string, user: string, maxTokens: number): Promise<string> {
+    const res = await client.chat.completions.create({
+      model: MODEL,
+      max_tokens: maxTokens,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    });
+    return res.choices[0]?.message?.content?.trim() ?? "";
+  }
 
   return {
     async extractHorizonDays(question, lang) {
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 40,
-        system: HORIZON_SYSTEM_PROMPT,
-        messages: [
-          { role: "user", content: `QUESTION (${lang}): ${question}\n\nReturn JSON.` },
-        ],
-      });
-      const block = res.content.find((c) => c.type === "text");
-      if (!block || block.type !== "text") return null;
-      try {
-        // Tolerate occasional fence drift even though we told it not to.
-        const cleaned = block.text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned) as { horizon_days: unknown };
-        const h = parsed.horizon_days;
-        if (h === null) return null;
-        if (typeof h !== "number" || !Number.isFinite(h)) return null;
-        if (h < 0) return 0;
-        if (h > 30) return 30;
-        return Math.round(h);
-      } catch {
-        return null;
-      }
+      const text = await chat(
+        HORIZON_SYSTEM_PROMPT,
+        `QUESTION (${lang}): ${question}\n\nReturn JSON.`,
+        40,
+      );
+      const parsed = parseJson<{ horizon_days: unknown }>(text);
+      if (!parsed) return null;
+      const h = parsed.horizon_days;
+      if (h === null) return null;
+      if (typeof h !== "number" || !Number.isFinite(h)) return null;
+      return Math.round(Math.max(0, Math.min(30, h)));
     },
 
     async classifyQuestion(question, lang) {
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 60,
-        system: `Classify a divination question as "specific" (asks about probability/likelihood of a concrete event) or "general" (seeks guidance on a situation/decision). Output strict JSON only — no prose, no markdown — with shape:
+      const text = await chat(
+        `Classify a divination question as "specific" (asks about probability/likelihood of a concrete event) or "general" (seeks guidance on a situation/decision). Output strict JSON only — no prose, no markdown — with shape:
 {"type":"general"|"specific","probability":<0-100>|null}
 probability: estimated percentage chance for specific questions based on question framing, null for general questions. Output JSON only.`,
-        messages: [
-          { role: "user", content: `QUESTION (${lang}): ${question}\n\nReturn JSON.` },
-        ],
-      });
-      const block = res.content.find((c) => c.type === "text");
-      if (!block || block.type !== "text") return { type: "general", probability: null };
-      try {
-        const cleaned = block.text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned) as { type: unknown; probability: unknown };
-        const type = parsed.type === "specific" ? "specific" : "general";
-        const probability = typeof parsed.probability === "number" && Number.isFinite(parsed.probability)
-          ? Math.max(0, Math.min(100, Math.round(parsed.probability)))
-          : null;
-        return { type, probability };
-      } catch {
-        return { type: "general", probability: null };
-      }
+        `QUESTION (${lang}): ${question}\n\nReturn JSON.`,
+        60,
+      );
+      const parsed = parseJson<{ type: unknown; probability: unknown }>(text);
+      if (!parsed) return { type: "general", probability: null };
+      const type = parsed.type === "specific" ? "specific" : "general";
+      const probability = typeof parsed.probability === "number" && Number.isFinite(parsed.probability)
+        ? Math.max(0, Math.min(100, Math.round(parsed.probability)))
+        : null;
+      return { type, probability };
     },
 
     async getDailyScores(question, cast, user) {
@@ -159,63 +163,38 @@ probability: estimated percentage chance for specific questions based on questio
 Output JSON only. No code fences. No commentary.`,
       ].join("\n");
 
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 200,
-        system: "You produce daily divination scores in JSON format. Output JSON only.",
-        messages: [{ role: "user", content: userPrompt }],
-      });
-      const block = res.content.find((c) => c.type === "text");
-      if (!block || block.type !== "text") {
-        return { avoid: "overcommitting", luck: "focus and clarity", relationship: 3, academic: 3, career: 3, general: 3 };
-      }
-      try {
-        const cleaned = block.text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-        const clampScore = (v: unknown): number => {
-          const n = typeof v === "number" ? v : 3;
-          return Math.max(1, Math.min(5, Math.round(n)));
-        };
-        return {
-          avoid: typeof parsed.avoid === "string" ? parsed.avoid : "overcommitting",
-          luck: typeof parsed.luck === "string" ? parsed.luck : "focus and clarity",
-          relationship: clampScore(parsed.relationship),
-          academic: clampScore(parsed.academic),
-          career: clampScore(parsed.career),
-          general: clampScore(parsed.general),
-        };
-      } catch {
-        return { avoid: "overcommitting", luck: "focus and clarity", relationship: 3, academic: 3, career: 3, general: 3 };
-      }
+      const fallback = { avoid: "overcommitting", luck: "focus and clarity", relationship: 3, academic: 3, career: 3, general: 3 };
+      const text = await chat("You produce daily divination scores in JSON format. Output JSON only.", userPrompt, 200);
+      const parsed = parseJson<Record<string, unknown>>(text);
+      if (!parsed) return fallback;
+      const clamp = (v: unknown): number => Math.max(1, Math.min(5, Math.round(typeof v === "number" ? v : 3)));
+      return {
+        avoid: typeof parsed.avoid === "string" ? parsed.avoid : fallback.avoid,
+        luck: typeof parsed.luck === "string" ? parsed.luck : fallback.luck,
+        relationship: clamp(parsed.relationship),
+        academic: clamp(parsed.academic),
+        career: clamp(parsed.career),
+        general: clamp(parsed.general),
+      };
     },
 
     async getLuckyAttributes(bazi, lang) {
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 80,
-        system: `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements. Pick vibrant, dopamine-coded colors (hot pink, coral, aqua, lavender, sunny yellow, etc.) when energetically appropriate. Output strict JSON only:
+      const fallback = { number: 7, color: "Lavender", colorHex: "#C77DFF", stone: "Amethyst" };
+      const text = await chat(
+        `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements. Pick vibrant, dopamine-coded colors (hot pink, coral, aqua, lavender, sunny yellow, etc.) when energetically appropriate. Output strict JSON only:
 {"number":<1-9>,"color":"<English color name>","colorHex":"<hex code>","stone":"<one of: Emerald, Ruby, Sapphire, Citrine, Rose Quartz, Clear Quartz, Amethyst>"}
 Output JSON only. No code fences. No commentary.`,
-        messages: [
-          { role: "user", content: `八字: ${JSON.stringify(bazi)}\nLang: ${lang}\n\nReturn JSON.` },
-        ],
-      });
-      const block = res.content.find((c) => c.type === "text");
-      if (!block || block.type !== "text") {
-        return { number: 7, color: "Blue", colorHex: "#2980B9", stone: "Sapphire" };
-      }
-      try {
-        const cleaned = block.text.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-        return {
-          number: typeof parsed.number === "number" ? Math.max(1, Math.min(9, Math.round(parsed.number))) : 7,
-          color: typeof parsed.color === "string" ? parsed.color : "Blue",
-          colorHex: typeof parsed.colorHex === "string" ? parsed.colorHex : "#2980B9",
-          stone: typeof parsed.stone === "string" ? parsed.stone : "Sapphire",
-        };
-      } catch {
-        return { number: 7, color: "Blue", colorHex: "#2980B9", stone: "Sapphire" };
-      }
+        `八字: ${JSON.stringify(bazi)}\nLang: ${lang}\n\nReturn JSON.`,
+        80,
+      );
+      const parsed = parseJson<Record<string, unknown>>(text);
+      if (!parsed) return fallback;
+      return {
+        number: typeof parsed.number === "number" ? Math.max(1, Math.min(9, Math.round(parsed.number))) : fallback.number,
+        color: typeof parsed.color === "string" ? parsed.color : fallback.color,
+        colorHex: typeof parsed.colorHex === "string" ? parsed.colorHex : fallback.colorHex,
+        stone: typeof parsed.stone === "string" ? parsed.stone : fallback.stone,
+      };
     },
 
     async interpret(input) {
@@ -243,15 +222,9 @@ Output JSON only. No code fences. No commentary.`,
         `Respond in ${lang === "zh" ? "中文" : "English"}. Be specific. Commit to a reading. Keep the Gen Z bestie energy.`,
       ].join("\n");
 
-      const res = await anthropic.messages.create({
-        model: MODEL,
-        max_tokens: 600,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
-      });
-      const block = res.content.find((c) => c.type === "text");
-      if (!block || block.type !== "text") throw new Error("Anthropic response missing text block");
-      return block.text.trim();
+      const text = await chat(SYSTEM_PROMPT, userPrompt, 600);
+      if (!text) throw new Error("OpenRouter response missing text");
+      return text;
     },
   };
 }

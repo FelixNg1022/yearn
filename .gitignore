@@ -46,5 +46,11 @@ yun.db-shm
 yun.db-wal
 yun.log
 
+# Test SQLite databases
+test-yun.db
+test-yun.db-journal
+test-yun.db-shm
+test-yun.db-wal
+
 # Large media (kept locally, not in git)
 demo.mov

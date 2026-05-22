@@ -9,11 +9,11 @@ describe("config", () => {
   });
 
   test("throws when required var is missing", () => {
-    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENROUTER_API_KEY;
     expect(() => {
       const { config } = require("../src/config.ts");
-      config.anthropicApiKey();
-    }).toThrow("ANTHROPIC_API_KEY");
+      config.openRouterApiKey();
+    }).toThrow("OPENROUTER_API_KEY");
   });
 
   test("followUpDays defaults to 5", () => {
