@@ -57,59 +57,59 @@ export function resolveTimezone(location: string): string | null {
 
 export const STRINGS = {
   askName: {
-    en: "Welcome to 运. What's your name?",
-    zh: "欢迎使用运。请问你的名字是？",
+    en: "omg hi!! welcome to 运 (yun) — your personal fortune bestie. what's your name?",
+    zh: "嗨嗨！欢迎来到运✨ 你的专属命运小助手。你叫什么名字呀？",
   },
   welcome: {
-    en: "Great! Now, what's your birth date? (e.g., October 22, 2002 or 2002-10-22)",
-    zh: "好的！那你的出生日期是什么？（如：2002年10月22日 或 2002-10-22）",
+    en: "love that name! now drop your birthday so i can read your 八字 (e.g. Oct 22, 2002 or 2002-10-22)",
+    zh: "好名字！告诉我你的生日，我来算你的八字～（如：2002年10月22日 或 2002-10-22）",
   },
   askTime: {
-    en: "Got it. What time were you born? (e.g., 6:00 PM or 18:00) — or say 'skip' if you don't know.",
-    zh: "好的。你的出生时间是几点？（如：18:00 或 下午6点）——不知道的话回「跳过」。",
+    en: "got it! what time were you born? (e.g. 6:00 PM or 18:00) — say 'skip' if you're not sure, no worries!",
+    zh: "明白了！你几点出生的？（如：18:00 或 下午6点）——不确定就回「跳过」，没关系的！",
   },
   askLocation: {
-    en: "And where were you born? (city + country, e.g., Shanghai, China)",
-    zh: "你在哪里出生？（城市+国家，如：中国深圳）",
+    en: "almost done! where were you born? (city is fine, like LA or Shanghai)",
+    zh: "快好啦！你在哪里出生？（说城市就好，比如深圳或上海）",
   },
   askTimezone: {
-    en: "I don't have that city in my lookup table. What's your UTC timezone offset? (e.g., +08:00 for China, -05:00 for NYC)",
-    zh: "我没找到那个城市。请输入你的时区偏移？（如中国 +08:00，纽约 -05:00）",
+    en: "hmm i don't have that city yet! what's your UTC offset? (e.g. +08:00 for China, -05:00 for NYC)",
+    zh: "哎呀，暂时没有这个城市的数据！能告诉我你的时区吗？（如中国 +08:00，纽约 -05:00）",
   },
   onboardingComplete: {
-    en: "Got it — your 八字 is set. Ask me anything.",
-    zh: "好了——八字已记录。随时问卦。",
+    en: "ur 八字 is locked in and your profile card is on its way! ask me anything and the universe will spill fr",
+    zh: "八字已解锁，个人卦盘正在发送！随时来问卦，宇宙会告诉你答案的",
   },
   invalidDate: {
-    en: "I couldn't read that as a date. Try: 2002-10-22 or October 22, 2002.",
-    zh: "无法识别这个日期，试试：2002-10-22 或 2002年10月22日。",
+    en: "hmm couldn't read that date! try: 2002-10-22 or Oct 22, 2002",
+    zh: "哎没认出这个日期！试试：2002-10-22 或 2002年10月22日",
   },
   invalidTime: {
-    en: "I couldn't read that as a time. Try: 18:00 or 6:00 PM. Or say 'skip'.",
-    zh: "无法识别这个时间，试试：18:00 或 下午6点。或者回「跳过」。",
+    en: "couldn't read that time! try: 18:00 or 6:00 PM — or just say 'skip' bestie",
+    zh: "没认出这个时间！试试：18:00 或 下午6点 — 或者回「跳过」也行",
   },
   rateLimited: {
-    en: "you've asked 10 times today — come back tomorrow.",
-    zh: "今天已问了10次——明天再来吧。",
+    en: "bestie you've asked 10 times today lol the stars need a breather — come back tomorrow!",
+    zh: "今天已经问了10次啦哈哈哈 宇宙也要休息一下——明天见！",
   },
   deletePrompt: {
-    en: "This will permanently delete all your readings and your 八字. Reply 'confirm delete' to proceed, or anything else to cancel.",
-    zh: "这将永久删除你的所有卦象和八字数据。回「confirm delete」确认，或回其他内容取消。",
+    en: "this will delete everything — your 八字 and all readings. reply 'confirm delete' to proceed, or anything else to cancel",
+    zh: "这将删除一切——你的八字和所有卦象。回「confirm delete」确认，或回其他内容取消",
   },
   deleteConfirmed: {
-    en: "Done. All your data has been deleted.",
-    zh: "已删除。你的所有数据已清除。",
+    en: "done! all gone. start fresh anytime, we'll be here",
+    zh: "搞定！全部清除了。随时可以重新开始哦",
   },
   deleteCancelled: {
-    en: "Cancelled.",
-    zh: "已取消。",
+    en: "phew! nothing happened, all good",
+    zh: "好的！什么都没变，放心",
   },
   sharePrompt: {
-    en: "this was a hit. want a shareable card? — reply 'share' and I'll send you one.",
-    zh: "这次准了。要生成一张分享卡吗？回「分享」我就发给你。",
+    en: "the universe literally called it! want a shareable card? reply 'share' and i'll make you one",
+    zh: "宇宙真的说对了！要生成一张分享卡吗？回「分享」我来给你做一张",
   },
   followUpNote: {
-    en: "(reply 'yes', 'no', or 'mixed' in a few days when I check back.)",
-    zh: "（过几日我来问结果，届时回 yes / no / mixed 即可。）",
+    en: "(i'll check back when the time comes — reply yes / no / mixed and let me know how it played out!)",
+    zh: "（到时候我会来问结果的——回 yes / no / mixed 告诉我怎么样了！）",
   },
 } as const;
