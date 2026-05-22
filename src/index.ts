@@ -19,20 +19,41 @@ async function main(): Promise<void> {
   const llm = createLlm();
   const app = await initSpectrum();
 
-  // Serve the landing page on port 3000
+  // Serve the landing page + API on port 3000
   const PUBLIC_DIR = path.resolve(import.meta.dir, "../public");
   if (fs.existsSync(PUBLIC_DIR)) {
-    const landingPage = Bun.file(path.join(PUBLIC_DIR, "index.html"));
     Bun.serve({
       port: 3000,
-      fetch(req) {
+      async fetch(req) {
         const url = new URL(req.url);
-        let filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname);
+
+        // POST /api/start — receives { phone } and triggers the onboarding via Spectrum
+        if (url.pathname === "/api/start" && req.method === "POST") {
+          try {
+            const body = await req.json() as { phone?: string };
+            const raw = (body.phone ?? "").trim();
+            const digits = raw.replace(/\D/g, "");
+            if (!digits || digits.length < 7) {
+              return Response.json({ error: "enter a valid phone number" }, { status: 400 });
+            }
+            // Normalize: 10 digits → prepend +1, otherwise prepend +
+            const phone = raw.startsWith("+") ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
+            await route(phone, "hi", new Date(), { db, llm });
+            return Response.json({ ok: true });
+          } catch (err) {
+            console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "api/start", err: String(err) }));
+            return Response.json({ error: "something went wrong, try again" }, { status: 500 });
+          }
+        }
+
+        // Static files — SPA fallback to index.html for unknown routes
+        const filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname);
         const file = Bun.file(filePath);
-        return new Response(file);
+        if (await file.exists()) return new Response(file);
+        return new Response(Bun.file(path.join(PUBLIC_DIR, "index.html")));
       },
     });
-    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "landing page on :3000" }));
+    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "landing page + api on :3000" }));
   }
 
   console.log(JSON.stringify({
