@@ -35,18 +35,19 @@ export interface QuestionClassification {
 
 export interface DailyScores {
   avoid: string;        // short phrase (≤8 words) of what to avoid today
-  luck: string;         // short phrase (≤8 words) for luck of the day
   relationship: number; // 1-5
   academic: number;     // 1-5
   career: number;       // 1-5
   general: number;      // 1-5
 }
 
+export type LuckyColorName = "orange" | "marigold" | "rose" | "magenta" | "violet" | "azure" | "teal" | "lime";
+export type LuckyStone = "emerald" | "ruby" | "sapphire";
+
 export interface LuckyAttributes {
-  number: number;   // 1-9
-  color: string;    // e.g. "Red"
-  colorHex: string; // e.g. "#C0392B"
-  stone: string;    // e.g. "Ruby"
+  number: number;       // 1-9
+  color: LuckyColorName;
+  stone: LuckyStone;
 }
 
 export interface LlmClient {
@@ -158,19 +159,18 @@ probability: estimated percentage chance for specific questions based on questio
         "USER 八字:",
         bazi ? JSON.stringify(bazi, null, 2) : "(not set)",
         "",
-        `Given the divination cast and user's 八字, produce today's daily scores. Use fun, Gen Z-flavored phrasing for avoid and luck (think: "starting drama in the group chat", "unexpected glow-up energy"). Output strict JSON only:
-{"avoid":"<≤8 words of what to avoid today>","luck":"<≤8 words for today's luck theme>","relationship":<1-5>,"academic":<1-5>,"career":<1-5>,"general":<1-5>}
+        `Given the divination cast and user's 八字, produce today's daily scores. Use fun, Gen Z-flavored phrasing for avoid (think: "starting drama in the group chat", "saying yes to everything"). Output strict JSON only:
+{"avoid":"<≤8 words of what to avoid today>","relationship":<1-5>,"academic":<1-5>,"career":<1-5>,"general":<1-5>}
 Output JSON only. No code fences. No commentary.`,
       ].join("\n");
 
-      const fallback = { avoid: "overcommitting", luck: "focus and clarity", relationship: 3, academic: 3, career: 3, general: 3 };
+      const fallback = { avoid: "overcommitting", relationship: 3, academic: 3, career: 3, general: 3 };
       const text = await chat("You produce daily divination scores in JSON format. Output JSON only.", userPrompt, 200);
       const parsed = parseJson<Record<string, unknown>>(text);
       if (!parsed) return fallback;
       const clamp = (v: unknown): number => Math.max(1, Math.min(5, Math.round(typeof v === "number" ? v : 3)));
       return {
         avoid: typeof parsed.avoid === "string" ? parsed.avoid : fallback.avoid,
-        luck: typeof parsed.luck === "string" ? parsed.luck : fallback.luck,
         relationship: clamp(parsed.relationship),
         academic: clamp(parsed.academic),
         career: clamp(parsed.career),
@@ -179,21 +179,27 @@ Output JSON only. No code fences. No commentary.`,
     },
 
     async getLuckyAttributes(bazi, lang) {
-      const fallback = { number: 7, color: "Lavender", colorHex: "#C77DFF", stone: "Amethyst" };
+      const VALID_COLORS = ["orange", "marigold", "rose", "magenta", "violet", "azure", "teal", "lime"] as const;
+      const VALID_STONES = ["emerald", "ruby", "sapphire"] as const;
+      const fallback = { number: 7, color: "violet" as const, stone: "amethyst" as unknown as "sapphire" };
       const text = await chat(
-        `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements. Pick vibrant, dopamine-coded colors (hot pink, coral, aqua, lavender, sunny yellow, etc.) when energetically appropriate. Output strict JSON only:
-{"number":<1-9>,"color":"<English color name>","colorHex":"<hex code>","stone":"<one of: Emerald, Ruby, Sapphire, Citrine, Rose Quartz, Clear Quartz, Amethyst>"}
+        `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements.
+Color must be one of exactly: orange, marigold, rose, magenta, violet, azure, teal, lime.
+Stone must be one of exactly: emerald, ruby, sapphire.
+Output strict JSON only:
+{"number":<1-9>,"color":"<one of the 8 color names>","stone":"<emerald|ruby|sapphire>"}
 Output JSON only. No code fences. No commentary.`,
         `八字: ${JSON.stringify(bazi)}\nLang: ${lang}\n\nReturn JSON.`,
-        80,
+        60,
       );
       const parsed = parseJson<Record<string, unknown>>(text);
       if (!parsed) return fallback;
+      const rawColor = (typeof parsed.color === "string" ? parsed.color.toLowerCase() : "") as typeof VALID_COLORS[number];
+      const rawStone = (typeof parsed.stone === "string" ? parsed.stone.toLowerCase() : "") as typeof VALID_STONES[number];
       return {
         number: typeof parsed.number === "number" ? Math.max(1, Math.min(9, Math.round(parsed.number))) : fallback.number,
-        color: typeof parsed.color === "string" ? parsed.color : fallback.color,
-        colorHex: typeof parsed.colorHex === "string" ? parsed.colorHex : fallback.colorHex,
-        stone: typeof parsed.stone === "string" ? parsed.stone : fallback.stone,
+        color: VALID_COLORS.includes(rawColor) ? rawColor : "violet",
+        stone: VALID_STONES.includes(rawStone) ? rawStone : "sapphire",
       };
     },
 

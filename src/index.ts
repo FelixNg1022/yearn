@@ -4,7 +4,10 @@ import { createLlm } from "./llm.ts";
 import { initSpectrum } from "./spectrum/app.ts";
 import { route } from "./router.ts";
 import { createScheduler } from "./scheduler.ts";
+import { closeRenderer } from "./card/render.ts";
 import { config } from "./config.ts";
+import path from "node:path";
+import fs from "node:fs";
 
 async function main(): Promise<void> {
   const dbUrl = config.tursoUrl();
@@ -15,6 +18,22 @@ async function main(): Promise<void> {
   const db = await openDb(dbUrl, dbToken);
   const llm = createLlm();
   const app = await initSpectrum();
+
+  // Serve the landing page on port 3000
+  const PUBLIC_DIR = path.resolve(import.meta.dir, "../public");
+  if (fs.existsSync(PUBLIC_DIR)) {
+    const landingPage = Bun.file(path.join(PUBLIC_DIR, "index.html"));
+    Bun.serve({
+      port: 3000,
+      fetch(req) {
+        const url = new URL(req.url);
+        let filePath = path.join(PUBLIC_DIR, url.pathname === "/" ? "index.html" : url.pathname);
+        const file = Bun.file(filePath);
+        return new Response(file);
+      },
+    });
+    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "landing page on :3000" }));
+  }
 
   console.log(JSON.stringify({
     ts: new Date().toISOString(), level: "INFO",
@@ -54,6 +73,7 @@ async function main(): Promise<void> {
   const shutdown = async (sig: string): Promise<void> => {
     console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: `${sig} received` }));
     scheduler.stop();
+    await closeRenderer();
     await db.close();
     process.exit(0);
   };

@@ -1,30 +1,19 @@
 // tests/card.test.ts
-import { describe, test, expect } from "bun:test";
-import { renderCastCard } from "../src/card/render.ts";
+import { describe, test, expect, afterAll } from "bun:test";
+import { renderProfileCard, renderDailyReadingCard, closeRenderer } from "../src/card/render.ts";
 
-const FAKE_CAST = {
-  method: "meihua",
-  primary: { name_zh: "恆", name_en: "Perseverance", num: 32, binary: [1,0,1,0,1,1] },
-  changed: { name_zh: "豫", name_en: "Enthusiasm", num: 16 },
-  changing_line: 3,
-  math: {
-    year_zhi_num: 7, lunar_month: 6, lunar_day: 10, hour_zhi_num: 4,
-    upper_mod: 4, lower_mod: 8, changing_sum: 21,
-    upper_trigram: "震", lower_trigram: "巽",
-  },
-  lunar: { year_gz: "甲辰", month: 6, day: 10, hour_zhi: "卯" },
-  cast_at_iso: new Date().toISOString(),
-};
+afterAll(async () => {
+  await closeRenderer();
+});
 
-describe("renderCastCard", () => {
-  test("returns a PNG buffer for cast mode", async () => {
-    const png = await renderCastCard({
-      question: "Will I get the job?",
-      cast: FAKE_CAST,
-      interpretation: "The 恆 hexagram suggests steady persistence.",
-      lang: "en",
-      timestamp: new Date(),
-      mode: "cast",
+describe("renderProfileCard", () => {
+  test("returns a PNG buffer", async () => {
+    const png = await renderProfileCard({
+      name: "Teri Shim",
+      luckyNumber: 7,
+      luckyColor: "violet",
+      luckyStone: "sapphire",
+      projection: "a season of bold moves pays off — trust the momentum.",
     });
     expect(png).toBeInstanceOf(Buffer);
     expect(png.length).toBeGreaterThan(1000);
@@ -33,18 +22,22 @@ describe("renderCastCard", () => {
     expect(png[1]).toBe(0x50);
     expect(png[2]).toBe(0x4E);
     expect(png[3]).toBe(0x47);
-  }, 15000);
+  }, 20000);
+});
 
-  test("returns a PNG buffer for outcome mode", async () => {
-    const png = await renderCastCard({
-      question: "Will I get the job?",
-      cast: FAKE_CAST,
-      interpretation: "The 恆 hexagram suggests steady persistence.",
-      lang: "en",
-      timestamp: new Date(),
-      mode: "outcome",
+describe("renderDailyReadingCard", () => {
+  test("returns a PNG buffer", async () => {
+    const png = await renderDailyReadingCard({
+      name: "Teri Shim",
+      date: new Date("2026-05-22"),
+      avoid: "starting drama in the group chat",
+      general: 4,
+      relationship: 3,
+      academic: 5,
+      career: 2,
     });
     expect(png).toBeInstanceOf(Buffer);
+    expect(png.length).toBeGreaterThan(1000);
     expect(png[0]).toBe(0x89);
-  }, 15000);
+  }, 20000);
 });

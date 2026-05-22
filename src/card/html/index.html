@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yearn Fortune Card</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/cards.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F0F0F0;
+      font-family: var(--font-body);
+    }
+    /* Responsive preview — scale card to fit small screens.
+       Export size stays locked at 380x600 via --card-w/--card-h. */
+    @media (max-width: 420px) {
+      #card-root { transform: scale(calc(100vw / 420)); transform-origin: top center; }
+      body { align-items: flex-start; padding-top: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="card-root"></div>
+
+  <script type="module">
+    import { resolveColor, DEFAULT_COLOR } from './js/palette.js';
+    import { renderProfile, renderDaily, renderSocial } from './js/cards.js';
+    import { loadFortuneData, validateFortuneData } from './js/data.js';
+
+    const RENDERERS = {
+      profile: renderProfile,
+      daily:   renderDaily,
+      social:  renderSocial,
+    };
+
+    function buildShell(hex) {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.style.setProperty('--card-color', hex);
+      el.innerHTML = `
+        <div class="card__header">
+          <h1 class="card__header-title"></h1>
+        </div>
+        <div class="card__body"></div>
+        <div class="card__footer"></div>
+      `;
+      return el;
+    }
+
+    // --- Single entry point: all data comes from the ingestion layer ---
+    const { card, data } = loadFortuneData();
+
+    const { valid, errors } = validateFortuneData(data, card);
+    if (!valid) {
+      console.warn(`[yearn] Validation errors for "${card}" card:`, errors);
+    }
+
+    const hex = resolveColor(data.profile?.luckyColor ?? DEFAULT_COLOR);
+    const shell = buildShell(hex);
+
+    const render = RENDERERS[card] ?? RENDERERS.profile;
+    render(data, shell);
+
+    document.getElementById('card-root').appendChild(shell);
+
+    // -----------------------------------------------------------------
+    // __CARD_READY__ signal — gated on fonts, stone SVG, and QR canvas
+    // -----------------------------------------------------------------
+    const readyPromises = [document.fonts.ready];
+
+    // Wait for stone SVG (profile card)
+    const stoneImg = shell.querySelector('.profile-block__stone-img');
+    if (stoneImg && !stoneImg.complete) {
+      readyPromises.push(new Promise(res => {
+        stoneImg.addEventListener('load', res, { once: true });
+        stoneImg.addEventListener('error', res, { once: true });
+      }));
+    }
+
+    // Wait for flower SVG (social card)
+    const flowerImg = shell.querySelector('.social-flowers img');
+    if (flowerImg && !flowerImg.complete) {
+      readyPromises.push(new Promise(res => {
+        flowerImg.addEventListener('load', res, { once: true });
+        flowerImg.addEventListener('error', res, { once: true });
+      }));
+    }
+
+    // QR is drawn synchronously in renderSocial — no promise needed.
+
+    Promise.all(readyPromises).then(() => {
+      window.__CARD_READY__ = true;
+    });
+
+    // -----------------------------------------------------------------
+    // In-page export (convenience fallback)
+    //
+    // KNOWN LIMITATIONS:
+    //   - Web fonts may not render in the foreignObject SVG path.
+    //   - background-clip: text will NOT render (projection gradient).
+    //   - External images (stone SVGs) may be tainted / missing.
+    //   - color-mix() may not be preserved.
+    //   ➜ For pixel-faithful output, use the headless Playwright path.
+    // -----------------------------------------------------------------
+    window.exportCard = async function () {
+      const cardEl = document.querySelector('.card');
+      if (!cardEl) throw new Error('No .card element found');
+      const w = 380, h = 600, scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = w * scale;
+      canvas.height = h * scale;
+
+      const clone = cardEl.cloneNode(true);
+      clone.style.width = w + 'px';
+      clone.style.height = h + 'px';
+
+      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+        .map(el => el.outerHTML).join('\n');
+
+      const svgMarkup = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${w*scale}" height="${h*scale}">
+          <foreignObject width="${w}" height="${h}"
+            style="transform:scale(${scale});transform-origin:top left;">
+            <div xmlns="http://www.w3.org/1999/xhtml">
+              ${styles}
+              <style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}</style>
+              ${clone.outerHTML}
+            </div>
+          </foreignObject>
+        </svg>`;
+
+      const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(pngBlob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(pngBlob);
+            a.download = `yearn-${card}-${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            resolve(pngBlob);
+          }, 'image/png');
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    };
+  </script>
+</body>
+</html>

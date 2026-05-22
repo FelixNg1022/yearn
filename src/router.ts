@@ -6,7 +6,7 @@ import { handleOnboarding } from "./onboarding.ts";
 import { handleCommand } from "./commands.ts";
 import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
-import { renderCastCard, renderProfileCard, renderDailyReadingCard } from "./card/render.ts";
+import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./card/render.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
@@ -81,21 +81,13 @@ export async function route(
   if (isShareRequest(trimmed)) {
     const yesOutcome = await db.getMostRecentYesOutcome(phone);
     if (yesOutcome) {
-      const readings = await db.getRecentReadings(phone, 1);
-      const reading = readings[0];
-      if (reading) {
-        const cast = JSON.parse(reading.cast_json);
-        const png = await renderCastCard({
-          question: yesOutcome.question,
-          cast,
-          interpretation: reading.interpretation,
-          lang: user.lang,
-          timestamp: new Date(reading.created_at),
-          mode: "outcome",
-        });
-        await sendCard(phone, "🎯 called it.", png);
-        await db.markShared(yesOutcome.reading_id);
-      }
+      const displayName = user.name ?? phone.slice(-4);
+      const png = await renderSocialCard({
+        name: displayName,
+        shareUrl: "https://yearn.cards",
+      });
+      await sendCard(phone, "🎯 called it.", png);
+      await db.markShared(yesOutcome.reading_id);
     }
     return;
   }
@@ -149,31 +141,20 @@ export async function route(
   if (result.daily_scores) {
     const displayName = user.name ?? phone.slice(-4);
     const png = await renderDailyReadingCard({
-      question: trimmed,
+      name: displayName,
       date: receivedAt,
       avoid: result.daily_scores.avoid,
-      luck: result.daily_scores.luck,
       relationship: result.daily_scores.relationship,
       academic: result.daily_scores.academic,
       career: result.daily_scores.career,
       general: result.daily_scores.general,
-      name: displayName,
-      lang: user.lang,
     });
     await sendCard(phone, result.reply, png);
     return;
   }
 
-  // Fallback: use classic cast card if somehow daily_scores is null for general.
-  const png = await renderCastCard({
-    question: trimmed,
-    cast: result.kernel,
-    interpretation: result.reply,
-    lang: user.lang,
-    timestamp: receivedAt,
-    mode: "cast",
-  });
-  await sendCard(phone, result.reply, png);
+  // Fallback: text-only if daily_scores somehow null for a general question.
+  await sendText(phone, result.reply);
 }
 
 async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
@@ -205,10 +186,8 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     name: displayName,
     luckyNumber: luckyAttrs.number,
     luckyColor: luckyAttrs.color,
-    luckyColorHex: luckyAttrs.colorHex,
     luckyStone: luckyAttrs.stone,
-    reading: broadReading,
-    lang: user.lang,
+    projection: broadReading,
   });
 
   const caption = user.lang === "zh"

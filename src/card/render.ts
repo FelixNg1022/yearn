@@ -1,140 +1,166 @@
 // src/card/render.ts
-import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
-import React from "react";
-import { CardTemplate, ProfileCardTemplate, DailyReadingCardTemplate, type CardProps, type ProfileCardProps, type DailyReadingCardProps } from "./template.tsx";
-import { loadFonts } from "./fonts.ts";
+import { chromium, type Browser, type Page } from "playwright";
+import http from "node:http";
+import path from "node:path";
+import fs from "node:fs";
 
-export interface RenderInput {
-  question: string;
-  cast: unknown;
-  interpretation: string;
-  lang: "en" | "zh";
-  timestamp: Date;
-  mode: "cast" | "outcome";
-}
+const HTML_DIR = path.resolve(import.meta.dir, "html");
+const CARD_W = 380;
+const CARD_H = 600;
+const SCALE = 3; // 1140×1800 output
 
-function extractCardProps(input: RenderInput): CardProps {
-  const { question, cast, interpretation, lang, timestamp, mode } = input;
-  const c = cast as Record<string, unknown>;
-  const ts = timestamp.toISOString().slice(0, 16).replace("T", " ");
-  const excerpt = interpretation.split(/[.。!！]/)[0] ?? interpretation;
+// ---------------------------------------------------------------------------
+// Singleton HTTP server (serves the card HTML/CSS/JS/assets)
+// ---------------------------------------------------------------------------
 
-  if (c.method === "liuren") {
-    const month = (c.month_palace as { name: string }).name;
-    const day = (c.day_palace as { name: string }).name;
-    const hour = (c.hour_palace as { name: string }).name;
-    return {
-      question, lang, mode,
-      hexagramNameZh: `${month}/${day}/${hour}`,
-      hexagramNameEn: "小六壬",
-      hexagramNum: 0,
-      kernelBlock: [`月 → ${month}`, `日 → ${day}`, `时 → ${hour}`].join("\n"),
-      interpretationExcerpt: excerpt,
-      timestamp: ts,
-      palaceName: month,
-    };
-  }
+let _server: http.Server | null = null;
+let _port = 0;
 
-  // meihua
-  const primary = c.primary as { name_zh: string; name_en: string; num: number; binary?: number[] };
-  const changed = c.changed as { name_zh: string; name_en: string; num: number };
-  const math = c.math as Record<string, number | string>;
-  const lunar = c.lunar as Record<string, string | number>;
+function getServer(): Promise<number> {
+  if (_server) return Promise.resolve(_port);
 
-  const kernelBlock = [
-    `lunar: ${lunar.year_gz}年 月${lunar.month} 日${lunar.day} ${lunar.hour_zhi}时`,
-    `upper: (${math.year_zhi_num}+${math.lunar_month}+${math.lunar_day}) mod 8 = ${math.upper_mod} → ${math.upper_trigram}`,
-    `lower: (+${math.hour_zhi_num}) mod 8 = ${math.lower_mod} → ${math.lower_trigram}`,
-    `→ ${primary.name_zh} → ${changed.name_zh}`,
-  ].join("\n");
-
-  return {
-    question, lang, mode,
-    hexagramNameZh: primary.name_zh,
-    hexagramNameEn: primary.name_en,
-    hexagramNum: primary.num,
-    kernelBlock,
-    interpretationExcerpt: excerpt,
-    timestamp: ts,
-    lines: primary.binary,
-    changingLine: math.changing_line as number,
+  const MIME: Record<string, string> = {
+    ".html": "text/html",
+    ".css": "text/css",
+    ".js": "text/javascript",
+    ".json": "application/json",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
   };
-}
 
-async function satoriToPng(element: React.ReactElement, width: number, height: number): Promise<Buffer> {
-  const fonts = await loadFonts();
-  const svg = await satori(element, {
-    width,
-    height,
-    fonts: fonts.map((f) => ({
-      name: f.name,
-      data: f.data,
-      weight: f.weight,
-      style: f.style,
-    })),
+  return new Promise((resolve, reject) => {
+    _server = http.createServer((req, res) => {
+      const url = new URL(req.url ?? "/", "http://localhost");
+      let filePath = path.join(HTML_DIR, decodeURIComponent(url.pathname));
+      if (filePath.endsWith("/")) filePath += "index.html";
+      const ext = path.extname(filePath);
+      fs.readFile(filePath, (err, data) => {
+        if (err) { res.writeHead(404); res.end("Not found"); return; }
+        res.writeHead(200, { "Content-Type": MIME[ext] ?? "application/octet-stream" });
+        res.end(data);
+      });
+    });
+    _server.listen(0, "127.0.0.1", () => {
+      const addr = _server!.address() as { port: number };
+      _port = addr.port;
+      resolve(_port);
+    });
+    _server.on("error", reject);
   });
-  const resvg = new Resvg(svg, { fitTo: { mode: "width", value: width } });
-  const pngData = resvg.render();
-  return Buffer.from(pngData.asPng());
 }
 
-export async function renderCastCard(input: RenderInput): Promise<Buffer> {
-  const props = extractCardProps(input);
-  return satoriToPng(React.createElement(CardTemplate, props), 1080, 1350);
+// ---------------------------------------------------------------------------
+// Singleton Playwright browser + reusable page
+// ---------------------------------------------------------------------------
+
+let _browser: Browser | null = null;
+let _page: Page | null = null;
+
+async function getPage(): Promise<Page> {
+  if (!_browser) {
+    _browser = await chromium.launch();
+  }
+  if (!_page || _page.isClosed()) {
+    const ctx = await _browser.newContext({
+      viewport: { width: CARD_W + 40, height: CARD_H + 40 },
+      deviceScaleFactor: SCALE,
+    });
+    _page = await ctx.newPage();
+  }
+  return _page;
 }
+
+export async function closeRenderer(): Promise<void> {
+  await _browser?.close();
+  _browser = null;
+  _page = null;
+  _server?.close();
+  _server = null;
+}
+
+// ---------------------------------------------------------------------------
+// Core screenshot helper
+// ---------------------------------------------------------------------------
+
+async function screenshotCard(params: URLSearchParams): Promise<Buffer> {
+  const port = await getServer();
+  const page = await getPage();
+
+  const url = `http://127.0.0.1:${port}/index.html?${params.toString()}`;
+  await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => (window as unknown as { __CARD_READY__: boolean }).__CARD_READY__ === true, { timeout: 15_000 });
+
+  const card = await page.$(".card");
+  if (!card) throw new Error("Card element not found in rendered page");
+
+  const buf = await card.screenshot({ type: "png" });
+  return Buffer.from(buf);
+}
+
+// ---------------------------------------------------------------------------
+// Public render functions
+// ---------------------------------------------------------------------------
 
 export interface ProfileRenderInput {
   name: string;
   luckyNumber: number;
-  luckyColor: string;
-  luckyColorHex: string;
-  luckyStone: string;
-  reading: string;
-  lang: "en" | "zh";
+  luckyColor: string; // palette name: orange | marigold | rose | magenta | violet | azure | teal | lime
+  luckyStone: "emerald" | "ruby" | "sapphire";
+  projection: string; // broad fortune reading text
 }
 
 export async function renderProfileCard(input: ProfileRenderInput): Promise<Buffer> {
-  const props: ProfileCardProps = {
+  const p = new URLSearchParams({
+    card: "profile",
     name: input.name,
-    luckyNumber: input.luckyNumber,
+    luckyNumber: String(input.luckyNumber),
     luckyColor: input.luckyColor,
-    luckyColorHex: input.luckyColorHex,
     luckyStone: input.luckyStone,
-    reading: input.reading,
-    lang: input.lang,
-  };
-  return satoriToPng(React.createElement(ProfileCardTemplate, props), 1080, 1350);
+    projection: input.projection,
+  });
+  return screenshotCard(p);
 }
 
 export interface DailyRenderInput {
-  question: string;
+  name: string;
   date: Date;
   avoid: string;
-  luck: string;
+  general: number;
   relationship: number;
   academic: number;
   career: number;
-  general: number;
-  name: string;
-  lang: "en" | "zh";
 }
 
 export async function renderDailyReadingCard(input: DailyRenderInput): Promise<Buffer> {
-  const dateStr = input.date.toLocaleDateString(input.lang === "zh" ? "zh-CN" : "en-US", {
+  const dateStr = input.date.toLocaleDateString("en-US", {
     year: "numeric", month: "long", day: "numeric",
-  });
-  const props: DailyReadingCardProps = {
-    question: input.question,
+  }).toLowerCase();
+
+  const p = new URLSearchParams({
+    card: "daily",
+    name: input.name,
     date: dateStr,
     avoid: input.avoid,
-    luck: input.luck,
-    relationship: input.relationship,
-    academic: input.academic,
-    career: input.career,
-    general: input.general,
+    general: String(input.general),
+    relationship: String(input.relationship),
+    academic: String(input.academic),
+    career: String(input.career),
+  });
+  return screenshotCard(p);
+}
+
+export interface SocialRenderInput {
+  name: string;
+  shareUrl: string;
+}
+
+export async function renderSocialCard(input: SocialRenderInput): Promise<Buffer> {
+  const p = new URLSearchParams({
+    card: "social",
     name: input.name,
-    lang: input.lang,
-  };
-  return satoriToPng(React.createElement(DailyReadingCardTemplate, props), 1080, 1350);
+    shareUrl: input.shareUrl,
+  });
+  return screenshotCard(p);
 }

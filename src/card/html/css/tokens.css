@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Design Tokens — Yearn Fortune Cards
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+
+:root {
+  /* Brand color (reference orange) */
+  --color-brand: #FF7B00;
+
+  /* On-color / surface */
+  --color-on-brand: #FFFFFF;
+  --color-card-bg: #FFFFFF;
+  --color-ink: #1A1A1A;
+  --color-muted: #9A9A9A;
+
+  /* Secondary accent (yellow for sub-meters) */
+  --color-accent-secondary: #FECE00;
+
+  /* Corner radii */
+  --radius-card: 22px;
+  --radius-body: 50px;
+  --radius-block: 20px;
+  --radius-pill: 999px;
+
+  /* Card dimensions (fixed export size) */
+  --card-w: 380px;
+  --card-h: 600px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Typography — Instrument Sans (matches Figma) */
+  --font-display: 'Instrument Sans', sans-serif;
+  --font-body: 'Instrument Sans', sans-serif;
+
+  /* Type scale */
+  --text-xs: 11px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 22px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+}

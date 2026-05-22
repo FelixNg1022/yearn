@@ -1,0 +1,10 @@
+<!-- PLACEHOLDER — Replace with final Figma-exported SVG. Keep filename and viewBox. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <polygon points="60,8 102,30 102,90 60,112 18,90 18,30" fill="rgba(255,255,255,0.85)" />
+  <polygon points="60,8 102,30 60,50 18,30" fill="rgba(255,255,255,0.95)" />
+  <line x1="60" y1="50" x2="60" y2="112" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" />
+  <line x1="60" y1="50" x2="102" y2="30" stroke="rgba(255,255,255,0.6)" stroke-width="1" />
+  <line x1="60" y1="50" x2="18" y2="30" stroke="rgba(255,255,255,0.6)" stroke-width="1" />
+  <line x1="60" y1="50" x2="102" y2="90" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+  <line x1="60" y1="50" x2="18" y2="90" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+</svg>
