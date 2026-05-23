@@ -10,15 +10,7 @@ import path from "node:path";
 import fs from "node:fs";
 
 async function main(): Promise<void> {
-  const dbUrl = config.tursoUrl();
-  const dbToken = config.tursoToken();
-  const demoSecs = config.demoFollowUpSeconds();
-  const schedulerMs = config.schedulerIntervalSeconds() * 1000;
-
-  const db = await openDb(dbUrl, dbToken);
-  const llm = createLlm();
-  const app = await initSpectrum();
-
+  // Start HTTP server first so Railway's health check passes immediately
   const PUBLIC_DIR = path.resolve(import.meta.dir, "../public");
   const hasPublic = fs.existsSync(PUBLIC_DIR);
   const port = Number(process.env.PORT ?? 3000);
@@ -92,6 +84,15 @@ async function main(): Promise<void> {
   });
 
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: `http on :${port}${hasPublic ? " (landing page + api)" : " (health only)"}` }));
+
+  const dbUrl = config.tursoUrl();
+  const dbToken = config.tursoToken();
+  const demoSecs = config.demoFollowUpSeconds();
+  const schedulerMs = config.schedulerIntervalSeconds() * 1000;
+
+  const db = await openDb(dbUrl, dbToken);
+  const llm = createLlm();
+  const app = await initSpectrum();
 
   console.log(JSON.stringify({
     ts: new Date().toISOString(), level: "INFO",
