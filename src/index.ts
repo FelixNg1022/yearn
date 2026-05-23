@@ -145,21 +145,29 @@ async function startApp(): Promise<void> {
       platform, spaceType, spacePhone, sender_id: phone, ctype, text_len: text.length,
     }));
 
-    if (!phone.startsWith("+")) continue;
-    if (spaceType && spaceType !== "dm") continue;
-    if (!text.trim()) continue;
+    if (!phone.startsWith("+")) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: no + prefix", phone })); continue; }
+    if (spaceType && spaceType !== "dm") { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: not dm", spaceType })); continue; }
+    if (!text.trim()) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: empty text" })); continue; }
 
-    await space.responding(async () => {
-      try {
-        await route(phone, text, new Date(message.timestamp), { db, llm });
-      } catch (err) {
-        console.error(JSON.stringify({
-          ts: new Date().toISOString(), level: "ERROR",
-          phone: phone.slice(-4), err: String(err),
-          stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4).join(" | ") : undefined,
-        }));
-      }
-    });
+    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "routing", phone: phone.slice(-4), text_preview: text.slice(0, 20) }));
+    try {
+      await space.responding(async () => {
+        console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding cb start" }));
+        try {
+          await route(phone, text, new Date(message.timestamp), { db, llm });
+          console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "route ok" }));
+        } catch (err) {
+          console.error(JSON.stringify({
+            ts: new Date().toISOString(), level: "ERROR", msg: "route threw",
+            phone: phone.slice(-4), err: String(err),
+            stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4).join(" | ") : undefined,
+          }));
+        }
+      });
+      console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding done" }));
+    } catch (err) {
+      console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "responding threw", err: String(err) }));
+    }
   }
   console.log(JSON.stringify({ ts: new Date().toISOString(), level: "WARN", msg: "inbound loop ended" }));
 }
