@@ -11,6 +11,7 @@ import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
 const OUTCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
+const SHARE_URL = "https://yearn-three.vercel.app/";
 
 const GREETING_PATTERNS = /^(hi|hey|hello|hiya|sup|yo|hii|hiii|hi yearn|hey yearn|hello yearn|start|begin|go|👋|🙋|🙋‍♀️|🙋‍♂️)[\s!.]*$/i;
 
@@ -96,7 +97,7 @@ export async function route(
       const displayName = user.name ?? phone.slice(-4);
       const png = await renderSocialCard({
         name: displayName,
-        shareUrl: "https://yearn.cards",
+        shareUrl: SHARE_URL,
       });
       await sendCard(phone, "🎯 called it.", png);
       await db.markShared(yesOutcome.reading_id);
@@ -160,6 +161,7 @@ export async function route(
       academic: result.daily_scores.academic,
       career: result.daily_scores.career,
       general: result.daily_scores.general,
+      shareUrl: SHARE_URL,
     });
     await sendCard(phone, result.reply, png);
     return;
@@ -205,6 +207,7 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     luckyColor: data.luckyColor,
     luckyStone: data.luckyStone,
     projection: data.projection,
+    shareUrl: SHARE_URL,
   });
 
   const caption = user.lang === "zh"

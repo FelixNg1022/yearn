@@ -63,6 +63,23 @@ const clampScore = (n) => Math.max(0, Math.min(5, Number(n) || 0));
 
 const CALENDAR_SVG = `<img src="assets/icons/calendar.svg" alt="" class="daily-cal-icon">`;
 
+function renderQRFooter(shareUrl, footerEl) {
+  if (!shareUrl || !footerEl) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 108;
+  canvas.height = 108;
+  canvas.style.width = '36px';
+  canvas.style.height = '36px';
+  canvas.style.flexShrink = '0';
+  canvas.style.borderRadius = '4px';
+  try { generateQR(shareUrl, canvas, { quietZone: 1, fg: '#1A1A1A', bg: '#FFFFFF' }); }
+  catch (e) { return; }
+  footerEl.style.display = 'flex';
+  footerEl.style.alignItems = 'center';
+  footerEl.style.justifyContent = 'space-between';
+  footerEl.appendChild(canvas);
+}
+
 function meterHTML(label, filled, tier) {
   const n = clampScore(filled);
   const cls = tier === 'primary' ? 'meter--primary' : 'meter--secondary';
@@ -116,7 +133,9 @@ function renderProfile(data, cardEl) {
       <p class="profile-projection__text">${safe(p.projection)}</p>
     </div>`;
 
-  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
+  const footer = cardEl.querySelector('.card__footer');
+  footer.textContent = `prepared for ${name}`;
+  if (data.shareUrl) renderQRFooter(data.shareUrl, footer);
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +163,9 @@ function renderDaily(data, cardEl) {
       ${meterHTML('Career Luck', luck.career, 'secondary')}
     </div>`;
 
-  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
+  const dailyFooter = cardEl.querySelector('.card__footer');
+  dailyFooter.textContent = `prepared for ${name}`;
+  if (data.shareUrl) renderQRFooter(data.shareUrl, dailyFooter);
 }
 
 // ---------------------------------------------------------------------------

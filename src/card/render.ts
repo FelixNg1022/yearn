@@ -109,6 +109,7 @@ export interface ProfileRenderInput {
   luckyColor: string; // palette name: orange | marigold | rose | magenta | violet | azure | teal | lime
   luckyStone: "emerald" | "ruby" | "sapphire";
   projection: string; // broad fortune reading text
+  shareUrl?: string;
 }
 
 export async function renderProfileCard(input: ProfileRenderInput): Promise<Buffer> {
@@ -120,6 +121,7 @@ export async function renderProfileCard(input: ProfileRenderInput): Promise<Buff
     luckyStone: input.luckyStone,
     projection: input.projection,
   });
+  if (input.shareUrl) p.set("shareUrl", input.shareUrl);
   return screenshotCard(p);
 }
 
@@ -131,6 +133,7 @@ export interface DailyRenderInput {
   relationship: number;
   academic: number;
   career: number;
+  shareUrl?: string;
 }
 
 export async function renderDailyReadingCard(input: DailyRenderInput): Promise<Buffer> {
@@ -148,6 +151,7 @@ export async function renderDailyReadingCard(input: DailyRenderInput): Promise<B
     academic: String(input.academic),
     career: String(input.career),
   });
+  if (input.shareUrl) p.set("shareUrl", input.shareUrl);
   return screenshotCard(p);
 }
 

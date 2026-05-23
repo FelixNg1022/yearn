@@ -118,6 +118,7 @@ function loadFromQueryParams() {
 
   const data = {
     name: p.get('name') || undefined,
+    shareUrl: p.get('shareUrl') || undefined,
     profile: {
       luckyNumber: toInt(p.get('luckyNumber')),
       luckyColor: luckyColorName,

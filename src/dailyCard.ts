@@ -6,6 +6,8 @@ import { renderDailyReadingCard } from "./card/render.ts";
 import { sendCard } from "./spectrum/send.ts";
 import { nextEightAmUtc } from "./router.ts";
 
+const SHARE_URL = "https://yearn-three.vercel.app/";
+
 export interface DailyCardDeps {
   db: Db;
   llm: LlmClient;
@@ -41,6 +43,7 @@ export async function sendDailyCard(user: UserRow, deps: DailyCardDeps): Promise
     relationship: scores.relationship,
     academic: scores.academic,
     career: scores.career,
+    shareUrl: SHARE_URL,
   });
 
   const caption = user.lang === "zh"
