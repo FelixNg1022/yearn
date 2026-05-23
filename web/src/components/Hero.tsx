@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react' // useState kept for wc (will-change) flag
+import { useState, useEffect } from 'react'
 import {
   motion,
   useMotionValue,
   useSpring,
   useTransform,
   useReducedMotion,
+  AnimatePresence,
 } from 'framer-motion'
 import { GradientField } from './layers/GradientField'
 import { ArchLayer } from './layers/ArchLayer'
@@ -12,13 +13,13 @@ import { CloudLayer } from './layers/CloudLayer'
 import { TextAndCTA } from './layers/TextAndCTA'
 import { Florals } from './layers/Florals'
 import { MobileLayout } from './layers/MobileLayout'
-
-const IMESSAGE_LINK = 'sms:+14156106180&body=hi%20yearn'
+import { PhoneModal } from './PhoneModal'
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion()
   const rm = !!prefersReducedMotion
   const [wc, setWc] = useState(!rm)
+  const [modalOpen, setModalOpen] = useState(false)
 
   useEffect(() => {
     if (!wc) return
@@ -47,7 +48,7 @@ export function Hero() {
   const textY = useTransform(smoothY, [-1, 1], [-3, 3])
 
   const willChange = wc ? 'transform' : 'auto'
-  const openImessage = () => { window.location.href = IMESSAGE_LINK }
+  const openModal = () => setModalOpen(true)
 
   return (
     <main
@@ -64,7 +65,7 @@ export function Hero() {
         <CloudLayer reduceMotion={rm} />
       </div>
       <motion.div className="absolute inset-0 z-30 pointer-events-none hidden md:block" style={{ x: textX, y: textY, willChange }}>
-        <TextAndCTA reduceMotion={rm} onOpen={openImessage} />
+        <TextAndCTA reduceMotion={rm} onOpen={openModal} />
       </motion.div>
       <div className="absolute inset-0 z-40 pointer-events-none hidden md:block">
         <Florals reduceMotion={rm} />
@@ -72,9 +73,12 @@ export function Hero() {
 
       {/* ── Mobile ── */}
       <div className="md:hidden">
-        <MobileLayout reduceMotion={rm} onOpen={openImessage} />
+        <MobileLayout reduceMotion={rm} onOpen={openModal} />
       </div>
 
+      <AnimatePresence>
+        {modalOpen && <PhoneModal onClose={() => setModalOpen(false)} />}
+      </AnimatePresence>
     </main>
   )
 }
