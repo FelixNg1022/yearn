@@ -19,9 +19,18 @@ Bun.serve({
   port,
   async fetch(req) {
     const url = new URL(req.url);
+    const cors = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
+
+    if (req.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: cors });
+    }
 
     if (url.pathname === "/health") {
-      return Response.json({ ok: true });
+      return Response.json({ ok: true }, { headers: cors });
     }
 
     if (!hasPublic) {
@@ -64,10 +73,10 @@ Bun.serve({
 
         const greeting = encodeURIComponent("hi yearn");
         const smsUrl = `sms:${assigned}&body=${greeting}`;
-        return Response.json({ ok: true, smsUrl, line: assigned });
+        return Response.json({ ok: true, smsUrl, line: assigned }, { headers: cors });
       } catch (err) {
         console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "api/start", err: String(err) }));
-        return Response.json({ error: "something went wrong, try again" }, { status: 500 });
+        return Response.json({ error: "something went wrong, try again" }, { status: 500, headers: cors });
       }
     }
 
