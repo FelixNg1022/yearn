@@ -33,17 +33,13 @@ Bun.serve({
       return Response.json({ ok: true }, { headers: cors });
     }
 
-    if (!hasPublic) {
-      return new Response("not found", { status: 404 });
-    }
-
     if (url.pathname === "/api/start" && req.method === "POST") {
       try {
         const body = await req.json() as { phone?: string };
         const raw = (body.phone ?? "").trim();
         const digits = raw.replace(/\D/g, "");
         if (!digits || digits.length < 7) {
-          return Response.json({ error: "enter a valid phone number" }, { status: 400 });
+          return Response.json({ error: "enter a valid phone number" }, { status: 400, headers: cors });
         }
         const phone = raw.startsWith("+") ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
 
@@ -63,12 +59,12 @@ Bun.serve({
             ts: new Date().toISOString(), level: "ERROR", msg: "api/start spectrum user",
             status: createRes.status, err: errText.slice(0, 300),
           }));
-          return Response.json({ error: "couldn't reach the fortune line, try again" }, { status: 502 });
+          return Response.json({ error: "couldn't reach the fortune line, try again" }, { status: 502, headers: cors });
         }
         const created = await createRes.json() as { data?: { assignedPhoneNumber?: string } };
         const assigned = created.data?.assignedPhoneNumber;
         if (!assigned) {
-          return Response.json({ error: "no fortune line assigned yet, try again later" }, { status: 502 });
+          return Response.json({ error: "no fortune line assigned yet, try again later" }, { status: 502, headers: cors });
         }
 
         const greeting = encodeURIComponent("hi yearn");
@@ -78,6 +74,10 @@ Bun.serve({
         console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "api/start", err: String(err) }));
         return Response.json({ error: "something went wrong, try again" }, { status: 500, headers: cors });
       }
+    }
+
+    if (!hasPublic) {
+      return new Response("not found", { status: 404 });
     }
 
     const isRoot = url.pathname === "/";
