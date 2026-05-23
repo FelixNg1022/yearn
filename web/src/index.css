@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-cream: #FAF7F0;
+  --color-honey-mid: #FFB700;
+  --color-honey-deep: #FECE00;
+  --color-marigold: #FF7301;
+  --color-marigold-hi: #D46700;
+  --color-ink: #2A1810;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+  margin: 0;
+}
+
+body {
+  background: var(--color-honey-deep);
+  color: var(--color-ink);
+  font-family: 'Instrument Sans', sans-serif;
+}
+
+@keyframes shine {
+  0%, 100% { transform: translateX(-120%); }
+  40%, 60% { transform: translateX(120%); }
+}

@@ -57,59 +57,59 @@ export function resolveTimezone(location: string): string | null {
 
 export const STRINGS = {
   askName: {
-    en: "omg hi!! welcome to 运 (yun) — your personal fortune bestie. what's your name?",
-    zh: "嗨嗨！欢迎来到运✨ 你的专属命运小助手。你叫什么名字呀？",
+    en: "hey!! welcome to yearn ✨ your personal fortune bestie. what's your name?",
+    zh: "嗨！欢迎来到 yearn ✨ 你的专属运势小助手。你叫什么名字？",
   },
   welcome: {
-    en: "love that name! now drop your birthday so i can read your 八字 (e.g. Oct 22, 2002 or 2002-10-22)",
-    zh: "好名字！告诉我你的生日，我来算你的八字～（如：2002年10月22日 或 2002-10-22）",
+    en: "love that!! now drop your birthday so i can read your 八字 (e.g. Apr 7, 2004 or 2004-04-07)",
+    zh: "好名字！告诉我你的生日，我来算你的八字（如：2004年4月7日 或 2004-04-07）",
   },
   askTime: {
-    en: "got it! what time were you born? (e.g. 6:00 PM or 18:00) — say 'skip' if you're not sure, no worries!",
-    zh: "明白了！你几点出生的？（如：18:00 或 下午6点）——不确定就回「跳过」，没关系的！",
+    en: "got it! what time were you born? (e.g. 9:30 AM or 14:00) — say 'skip' if you're not sure",
+    zh: "明白！你几点出生？（如：14:00 或 上午9点半）——不确定就回「跳过」",
   },
   askLocation: {
-    en: "almost done! where were you born? (city is fine, like LA or Shanghai)",
+    en: "almost there! where were you born? (city is fine, like LA or Shanghai)",
     zh: "快好啦！你在哪里出生？（说城市就好，比如深圳或上海）",
   },
   askTimezone: {
-    en: "hmm i don't have that city yet! what's your UTC offset? (e.g. +08:00 for China, -05:00 for NYC)",
-    zh: "哎呀，暂时没有这个城市的数据！能告诉我你的时区吗？（如中国 +08:00，纽约 -05:00）",
+    en: "hmm i don't know that city yet! what's your UTC offset? (e.g. +08:00 for China, -05:00 for NYC)",
+    zh: "哎，暂时没这个城市的数据！能告诉我你的时区吗？（如中国 +08:00，纽约 -05:00）",
   },
   onboardingComplete: {
-    en: "ur 八字 is locked in and your profile card is on its way! ask me anything and the universe will spill fr",
-    zh: "八字已解锁，个人卦盘正在发送！随时来问卦，宇宙会告诉你答案的",
+    en: "ur 八字 is locked in ✨ your profile card is on its way! ask me anything — the universe is ready to spill",
+    zh: "八字已解锁 ✨ 个人卦盘正在发送！随时来问，宇宙随时回答",
   },
   invalidDate: {
-    en: "hmm couldn't read that date! try: 2002-10-22 or Oct 22, 2002",
-    zh: "哎没认出这个日期！试试：2002-10-22 或 2002年10月22日",
+    en: "hmm couldn't read that date — try: Oct 22, 2002 or 2002-10-22",
+    zh: "没认出这个日期，试试：2002-10-22 或 2002年10月22日",
   },
   invalidTime: {
-    en: "couldn't read that time! try: 18:00 or 6:00 PM — or just say 'skip' bestie",
-    zh: "没认出这个时间！试试：18:00 或 下午6点 — 或者回「跳过」也行",
+    en: "couldn't read that time — try: 18:00 or 6:00 PM, or say 'skip'",
+    zh: "没认出这个时间，试试：18:00 或 下午6点，或回「跳过」",
   },
   rateLimited: {
-    en: "bestie you've asked 10 times today lol the stars need a breather — come back tomorrow!",
-    zh: "今天已经问了10次啦哈哈哈 宇宙也要休息一下——明天见！",
+    en: "you've asked a lot today — the stars need a breather. come back tomorrow!",
+    zh: "今天问了很多啦，宇宙需要休息一下——明天见！",
   },
   deletePrompt: {
-    en: "this will delete everything — your 八字 and all readings. reply 'confirm delete' to proceed, or anything else to cancel",
-    zh: "这将删除一切——你的八字和所有卦象。回「confirm delete」确认，或回其他内容取消",
+    en: "this will delete everything — your 八字 and all readings. reply 'confirm delete' to proceed, or anything else to cancel.",
+    zh: "这将删除一切——你的八字和所有卦象。回「confirm delete」确认，或回其他内容取消。",
   },
   deleteConfirmed: {
-    en: "done! all gone. start fresh anytime, we'll be here",
-    zh: "搞定！全部清除了。随时可以重新开始哦",
+    en: "all clear. start fresh anytime — yearn will be here.",
+    zh: "全部清除了。随时可以重新开始，yearn 一直在这里。",
   },
   deleteCancelled: {
-    en: "phew! nothing happened, all good",
-    zh: "好的！什么都没变，放心",
+    en: "nothing changed, all good!",
+    zh: "什么都没变，放心！",
   },
   sharePrompt: {
-    en: "the universe literally called it! want a shareable card? reply 'share' and i'll make you one",
-    zh: "宇宙真的说对了！要生成一张分享卡吗？回「分享」我来给你做一张",
+    en: "the universe literally called it ✨ want a shareable card? reply 'share'",
+    zh: "宇宙真的说对了！要生成分享卡吗？回「分享」",
   },
   followUpNote: {
-    en: "(i'll check back when the time comes — reply yes / no / mixed and let me know how it played out!)",
-    zh: "（到时候我会来问结果的——回 yes / no / mixed 告诉我怎么样了！）",
+    en: "(i'll check back when the time comes — reply yes / no / mixed!)",
+    zh: "（到时候我会来问结果的——回 yes / no / mixed！）",
   },
 } as const;

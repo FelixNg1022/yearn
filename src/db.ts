@@ -7,6 +7,13 @@ export type Lang = "en" | "zh";
 export type OnboardingState = "pending_name" | "pending_date" | "pending_time" | "pending_location" | "complete";
 export type Method = "meihua" | "liuren";
 
+export interface ProfileCardData {
+  luckyNumber: number;
+  luckyColor: string;
+  luckyStone: "emerald" | "ruby" | "sapphire";
+  projection: string;
+}
+
 export interface UserRow {
   phone: string;
   lang: Lang;
@@ -23,6 +30,9 @@ export interface UserRow {
   readings_today: number;
   readings_today_reset_at: number;
   delete_pending: 0 | 1;
+  profile_card_json: string | null;   // JSON-encoded ProfileCardData
+  next_daily_at: number;              // epoch ms — next 8am local delivery
+  daily_card_enabled: 0 | 1;
 }
 
 export interface ReadingRow {
@@ -90,6 +100,10 @@ export interface SetOnboardingStateExtra {
 
 export interface Db {
   getUser(phone: string): Promise<UserRow | null>;
+  saveProfileCardData(phone: string, data: ProfileCardData): Promise<void>;
+  enableDailyCard(phone: string, nextAt: number): Promise<void>;
+  getUsersDueForDailyCard(now: number): Promise<UserRow[]>;
+  setNextDailyAt(phone: string, nextAt: number): Promise<void>;
   upsertUser(u: UpsertUser): Promise<void>;
   touchLastSeen(phone: string, now: number): Promise<void>;
   setUserLang(phone: string, lang: Lang): Promise<void>;
@@ -126,7 +140,10 @@ CREATE TABLE IF NOT EXISTS users (
   last_seen_at INTEGER NOT NULL,
   readings_today INTEGER NOT NULL DEFAULT 0,
   readings_today_reset_at INTEGER NOT NULL,
-  delete_pending INTEGER NOT NULL DEFAULT 0
+  delete_pending INTEGER NOT NULL DEFAULT 0,
+  profile_card_json TEXT,
+  next_daily_at INTEGER NOT NULL DEFAULT 0,
+  daily_card_enabled INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS readings (
@@ -174,6 +191,9 @@ function toUser(row: Row): UserRow {
     readings_today: row.readings_today as number,
     readings_today_reset_at: row.readings_today_reset_at as number,
     delete_pending: (row.delete_pending as number) as 0 | 1,
+    profile_card_json: row.profile_card_json as string | null,
+    next_daily_at: (row.next_daily_at as number) ?? 0,
+    daily_card_enabled: ((row.daily_card_enabled as number) ?? 0) as 0 | 1,
   };
 }
 
@@ -222,6 +242,18 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
   if (!hasQtype) {
     await client.execute("ALTER TABLE readings ADD COLUMN question_type TEXT");
     await client.execute("ALTER TABLE readings ADD COLUMN predicted_probability INTEGER");
+  }
+
+  const userColsV2 = await client.execute("PRAGMA table_info(users)");
+  const names = userColsV2.rows.map((r) => r.name as string);
+  if (!names.includes("profile_card_json")) {
+    await client.execute("ALTER TABLE users ADD COLUMN profile_card_json TEXT");
+  }
+  if (!names.includes("next_daily_at")) {
+    await client.execute("ALTER TABLE users ADD COLUMN next_daily_at INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!names.includes("daily_card_enabled")) {
+    await client.execute("ALTER TABLE users ADD COLUMN daily_card_enabled INTEGER NOT NULL DEFAULT 0");
   }
 
   return {
@@ -447,6 +479,35 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
           END
           WHERE phone = ?`,
         args: [now - DAY_MS, now - DAY_MS, now, phone],
+      });
+    },
+
+    async saveProfileCardData(phone, data) {
+      await client.execute({
+        sql: "UPDATE users SET profile_card_json = ? WHERE phone = ?",
+        args: [JSON.stringify(data), phone],
+      });
+    },
+
+    async enableDailyCard(phone, nextAt) {
+      await client.execute({
+        sql: "UPDATE users SET daily_card_enabled = 1, next_daily_at = ? WHERE phone = ?",
+        args: [nextAt, phone],
+      });
+    },
+
+    async getUsersDueForDailyCard(now) {
+      const r = await client.execute({
+        sql: "SELECT * FROM users WHERE daily_card_enabled = 1 AND onboarding_state = 'complete' AND next_daily_at > 0 AND next_daily_at <= ?",
+        args: [now],
+      });
+      return r.rows.map(toUser);
+    },
+
+    async setNextDailyAt(phone, nextAt) {
+      await client.execute({
+        sql: "UPDATE users SET next_daily_at = ? WHERE phone = ?",
+        args: [nextAt, phone],
       });
     },
 

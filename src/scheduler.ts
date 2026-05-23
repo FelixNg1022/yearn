@@ -1,7 +1,9 @@
 // src/scheduler.ts
 import type { Db } from "./db.ts";
+import type { LlmClient } from "./llm.ts";
 import type { Lang } from "./lang.ts";
 import { sendFollowUp } from "./spectrum/send.ts";
+import { tickDailyCards } from "./dailyCard.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -20,6 +22,7 @@ export function buildFollowUpText(question: string, lang: Lang, days: number): s
 
 export interface SchedulerOptions {
   db: Db;
+  llm: LlmClient;
   intervalMs: number;
 }
 
@@ -30,17 +33,20 @@ export interface Scheduler {
 }
 
 export function createScheduler(opts: SchedulerOptions): Scheduler {
-  const { db, intervalMs } = opts;
+  const { db, llm, intervalMs } = opts;
   let handle: ReturnType<typeof setInterval> | null = null;
 
   const tick = async (): Promise<void> => {
     const now = Date.now();
+
+    // Daily morning cards
+    await tickDailyCards(now, { db, llm });
+
+    // Follow-up reminders
     const pending = await db.getPendingFollowUps(now);
     for (const reading of pending) {
       const user = await db.getUser(reading.phone);
       const lang: Lang = user?.lang ?? reading.lang;
-      // Use real elapsed time from the cast, so the message ("N days ago...")
-      // is accurate even when the follow-up delay was derived per-question.
       const days = elapsedDays(reading.created_at, now);
       try {
         await sendFollowUp(reading.phone, reading.question, lang, days);

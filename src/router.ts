@@ -12,6 +12,8 @@ import { config } from "./config.ts";
 
 const OUTCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
 
+const GREETING_PATTERNS = /^(hi|hey|hello|hiya|sup|yo|hii|hiii|hi yearn|hey yearn|hello yearn|start|begin|go|👋|🙋|🙋‍♀️|🙋‍♂️)[\s!.]*$/i;
+
 export interface RouterDeps {
   db: Db;
   llm: LlmClient;
@@ -46,6 +48,16 @@ export async function route(
 
   await db.touchLastSeen(phone, now);
 
+  // Greeting from a fully onboarded user → welcome back
+  if (GREETING_PATTERNS.test(trimmed) && user.onboarding_state === "complete") {
+    const name = user.name ? `, ${user.name}` : "";
+    const msg = user.lang === "zh"
+      ? `欢迎回来${name}！✨ 有什么想问宇宙的吗？`
+      : `welcome back${name}! ✨ what do you want to ask the universe today?`;
+    await sendText(phone, msg);
+    return;
+  }
+
   if (user.delete_pending) {
     if (trimmed.toLowerCase() === "confirm delete") {
       await db.deleteUser(phone);
@@ -70,10 +82,10 @@ export async function route(
   if (user.onboarding_state !== "complete") {
     const reply = await handleOnboarding(user, trimmed, db);
     await sendText(phone, reply);
-    // Check if onboarding just completed — if so, send profile card
     const refreshedUser = await db.getUser(phone);
     if (refreshedUser && refreshedUser.onboarding_state === "complete") {
-      await sendProfileCard(phone, refreshedUser, deps);
+      // Fire-and-forget: generate profile card data + send card, then arm daily scheduler
+      void prepareAndSendProfileCard(phone, refreshedUser, deps);
     }
     return;
   }
@@ -157,43 +169,125 @@ export async function route(
   await sendText(phone, result.reply);
 }
 
+/** Called on /profile — reads cached data from DB, renders with Playwright, sends. No LLM. */
 async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
-  const { db, llm } = deps;
+  const { db } = deps;
   const displayName = user.name ?? phone.slice(-4);
-  const bazi = user.bazi_pillars ? JSON.parse(user.bazi_pillars) : null;
 
-  if (!bazi) {
+  if (!user.bazi_pillars) {
     await sendText(phone, user.lang === "zh"
-      ? "还没有八字数据，请先完成入门设置。"
-      : "No 八字 on file yet — complete setup first.");
+      ? "还没有八字数据哦，先完成设置吧～ 发「/setup」开始"
+      : "no 八字 on file yet — send /setup to get started!");
     return;
   }
 
-  // Get lucky attributes and a broad interpretation in parallel.
-  const recentReadings = await db.getRecentReadings(phone, 3);
-  const [luckyAttrs, broadReading] = await Promise.all([
+  // Use cached profile card data if available; otherwise regenerate it now.
+  let data: import("./db.ts").ProfileCardData | null = user.profile_card_json
+    ? (JSON.parse(user.profile_card_json) as import("./db.ts").ProfileCardData)
+    : null;
+
+  if (!data) {
+    try {
+      data = await generateProfileCardData(user, deps);
+      await db.saveProfileCardData(phone, data);
+    } catch {
+      const msg = user.lang === "zh"
+        ? "正在生成你的卦盘，稍后再试 /profile 就好！"
+        : "still working on your profile card — try /profile again in a moment!";
+      await sendText(phone, msg);
+      return;
+    }
+  }
+
+  const png = await renderProfileCard({
+    name: displayName,
+    luckyNumber: data.luckyNumber,
+    luckyColor: data.luckyColor,
+    luckyStone: data.luckyStone,
+    projection: data.projection,
+  });
+
+  const caption = user.lang === "zh"
+    ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
+    : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
+  await sendCard(phone, caption, png);
+}
+
+/** Called once at onboarding completion. Generates + stores profile card data, sends the card,
+ *  then arms the daily card scheduler for 8am local time. */
+async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
+  const { db } = deps;
+  try {
+    const data = await generateProfileCardData(user, deps);
+    await db.saveProfileCardData(phone, data);
+
+    const displayName = user.name ?? phone.slice(-4);
+    const png = await renderProfileCard({
+      name: displayName,
+      luckyNumber: data.luckyNumber,
+      luckyColor: data.luckyColor,
+      luckyStone: data.luckyStone,
+      projection: data.projection,
+    });
+
+    const caption = user.lang === "zh"
+      ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
+      : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
+    await sendCard(phone, caption, png);
+
+    // Arm daily card delivery at next 8am local time
+    if (user.birth_tz) {
+      const nextAt = nextEightAmUtc(user.birth_tz, Date.now());
+      await db.enableDailyCard(phone, nextAt);
+    }
+  } catch (err) {
+    console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "prepareProfileCard", phone: phone.slice(-4), err: String(err) }));
+    // Notify the user so they're not left in silence
+    try {
+      const refreshed = await deps.db.getUser(phone);
+      const lang = refreshed?.lang ?? "en";
+      const msg = lang === "zh"
+        ? "卦盘正在生成中，稍后发 /profile 来查看！"
+        : "your profile card is still brewing ✨ send /profile whenever you're ready!";
+      await sendText(phone, msg);
+    } catch { /* best-effort */ }
+  }
+}
+
+async function generateProfileCardData(user: import("./db.ts").UserRow, deps: RouterDeps): Promise<import("./db.ts").ProfileCardData> {
+  const { db, llm } = deps;
+  const bazi = JSON.parse(user.bazi_pillars!);
+  const recentReadings = await db.getRecentReadings(user.phone, 3);
+  const [luckyAttrs, projection] = await Promise.all([
     llm.getLuckyAttributes(bazi, user.lang),
     llm.interpret({
-      question: user.lang === "zh" ? "请给我一个关于近期整体运势的宏观解读。" : "Please give me a broad projection of my overall fortune for the near future.",
+      question: user.lang === "zh" ? "请给我一个关于近期整体运势的宏观解读。" : "Give me a broad projection of my overall fortune for the near future.",
       lang: user.lang,
       kernel: {},
       user,
       recent: recentReadings,
     }),
   ]);
-
-  const png = await renderProfileCard({
-    name: displayName,
+  return {
     luckyNumber: luckyAttrs.number,
     luckyColor: luckyAttrs.color,
     luckyStone: luckyAttrs.stone,
-    projection: broadReading,
-  });
+    projection,
+  };
+}
 
-  const caption = user.lang === "zh"
-    ? `你的幸运数字是 ${luckyAttrs.number}，幸运颜色是 ${luckyAttrs.color}，幸运宝石是 ${luckyAttrs.stone}。`
-    : `Your lucky number is ${luckyAttrs.number}, lucky color is ${luckyAttrs.color}, lucky stone is ${luckyAttrs.stone}.`;
-  await sendCard(phone, caption, png);
+/** Returns the UTC epoch ms for the next 8:00 AM in the given UTC offset string (e.g. "+08:00"). */
+export function nextEightAmUtc(tzOffset: string, fromMs: number): number {
+  const sign = tzOffset[0] === "+" ? 1 : -1;
+  const [h, m] = tzOffset.slice(1).split(":").map(Number);
+  const offsetMs = sign * ((h ?? 0) * 60 + (m ?? 0)) * 60 * 1000;
+
+  const localMs = fromMs + offsetMs;
+  const d = new Date(localMs);
+  const localMidnight = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const local8am = localMidnight + 8 * 3600 * 1000;
+  const target = local8am > localMs ? local8am : local8am + 24 * 3600 * 1000;
+  return target - offsetMs;
 }
 
 function outcomeAck(outcome: "yes" | "no" | "mixed", lang: "en" | "zh"): string {

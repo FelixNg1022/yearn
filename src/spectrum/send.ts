@@ -6,7 +6,8 @@ import { getApp } from "./app.ts";
 
 async function getSpace(phone: string) {
   const iMsg = imessage(getApp());
-  return iMsg.space({ phone });
+  const user = await iMsg.user(phone);
+  return iMsg.space(user);
 }
 
 export async function sendText(phone: string, text: string): Promise<void> {

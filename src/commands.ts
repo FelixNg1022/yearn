@@ -59,7 +59,7 @@ export async function handleCommand(
 function help(lang: Lang): string {
   if (lang === "zh") {
     return [
-      "运 — 命令一览",
+      "yearn — 命令一览",
       "/help        这条帮助",
       "/profile     查看你的个人卦盘",
       "/history     最近 5 次卦",
@@ -73,7 +73,7 @@ function help(lang: Lang): string {
     ].join("\n");
   }
   return [
-    "运 — commands",
+    "yearn — commands",
     "/help        this message",
     "/profile     view your profile card",
     "/history     last 5 readings",
