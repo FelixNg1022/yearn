@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["bun", "chromium", "nss", "nspr", "at-spi2-atk", "cups", "libdrm", "dbus", "expat", "xorg.libX11", "xorg.libXcomposite", "xorg.libXdamage", "xorg.libXext", "xorg.libXfixes", "xorg.libXrandr", "xorg.libxcb", "mesa", "libxkbcommon", "pango", "cairo", "alsa-lib", "gtk3"]
+
+[phases.install]
+cmds = ["bun install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["bunx playwright install chromium --with-deps || true"]
+
+[start]
+cmd = "bun run src/index.ts"
