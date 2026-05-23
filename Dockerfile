@@ -1,15 +1,21 @@
-FROM oven/bun:1.2 AS build
+FROM mcr.microsoft.com/playwright:v1.50.0-jammy
+
+# Install Bun
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
 WORKDIR /app
+
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
-COPY . .
 
-FROM oven/bun:1.2-slim
-WORKDIR /app
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/src ./src
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/tsconfig.json ./tsconfig.json
+COPY src/ ./src/
+COPY tsconfig.json ./
 
+# Playwright browsers are pre-installed in the base image
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV NODE_ENV=production
+
+EXPOSE 3000
+
 CMD ["bun", "run", "src/index.ts"]

@@ -36,6 +36,9 @@ export function parseDate(text: string): DateParts | null {
   // MM/DD/YYYY
   const slash = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (slash && +slash[3]! > 1900) return { year: +slash[3]!, month: +slash[1]!, day: +slash[2]! };
+  // YYYYMMDD (no separators)
+  const compact = t.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (compact && +compact[1]! > 1900) return { year: +compact[1]!, month: +compact[2]!, day: +compact[3]! };
   return null;
 }
 
