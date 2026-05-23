@@ -50,9 +50,11 @@ export function parseTime(text: string): TimeParts | null {
   if (hhmm) {
     let h = +hhmm[1]!;
     const min = +hhmm[2]!;
+    if (min > 59) return null;
     const period = hhmm[3]?.toLowerCase();
     if (period === "pm" && h < 12) h += 12;
     if (period === "am" && h === 12) h = 0;
+    if (h > 23) return null;
     return { hour: h, minute: min };
   }
   // H am/pm
@@ -62,6 +64,7 @@ export function parseTime(text: string): TimeParts | null {
     const period = hpm[2]!.toLowerCase();
     if (period === "pm" && h < 12) h += 12;
     if (period === "am" && h === 12) h = 0;
+    if (h > 23) return null;
     return { hour: h, minute: 0 };
   }
   return null;
