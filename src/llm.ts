@@ -74,6 +74,12 @@ export interface LlmClient {
    * Called once at onboarding completion.
    */
   getLuckyAttributes(bazi: unknown, lang: Lang): Promise<LuckyAttributes>;
+  /**
+   * Resolve a free-text location (city name, abbreviation, region) to a
+   * UTC offset string like "+08:00". Returns null if unrecognisable.
+   * Called once during onboarding as a fallback after the static TZ_MAP misses.
+   */
+  resolveTimezone(location: string): Promise<string | null>;
 }
 
 const HORIZON_SYSTEM_PROMPT = `You extract the prediction horizon from a divination question.
@@ -201,6 +207,26 @@ Output JSON only. No code fences. No commentary.`,
         color: VALID_COLORS.includes(rawColor) ? rawColor : "violet",
         stone: VALID_STONES.includes(rawStone) ? rawStone : "sapphire",
       };
+    },
+
+    async resolveTimezone(location) {
+      const text = await chat(
+        `You resolve a location to its standard UTC offset.
+Output strict JSON only — no prose, no markdown:
+  {"utc_offset": "+HH:MM" | null}
+Rules:
+- Return the UTC offset for the location's standard/winter time (e.g. "LA" → "-08:00", "Shanghai" → "+08:00").
+- If the location is completely unrecognisable, return null.
+- Output JSON only. No code fences. No commentary.`,
+        `LOCATION: ${location}\n\nReturn JSON.`,
+        20,
+      );
+      const parsed = parseJson<{ utc_offset: unknown }>(text);
+      if (!parsed) return null;
+      const offset = parsed.utc_offset;
+      if (typeof offset !== "string") return null;
+      if (!/^[+-]\d{2}:\d{2}$/.test(offset)) return null;
+      return offset;
     },
 
     async interpret(input) {

@@ -81,7 +81,7 @@ export async function route(
   }
 
   if (user.onboarding_state !== "complete") {
-    const reply = await handleOnboarding(user, trimmed, db);
+    const reply = await handleOnboarding(user, trimmed, db, deps.llm);
     await sendText(phone, reply);
     const refreshedUser = await db.getUser(phone);
     if (refreshedUser && refreshedUser.onboarding_state === "complete") {

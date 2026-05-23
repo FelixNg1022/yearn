@@ -1,4 +1,5 @@
 import type { Db, UserRow } from "./db.ts";
+import type { LlmClient } from "./llm.ts";
 import type { Lang } from "./lang.ts";
 import { STRINGS, resolveTimezone } from "./lang.ts";
 import { encryptToJson } from "./crypto.ts";
@@ -91,6 +92,7 @@ export async function handleOnboarding(
   user: UserRow,
   text: string,
   db: Db,
+  llm?: LlmClient,
 ): Promise<string> {
   const lang: Lang = user.lang;
 
@@ -142,7 +144,8 @@ export async function handleOnboarding(
         return STRINGS.welcome[lang];
       }
 
-      const tz = resolveTimezone(text);
+      let tz = resolveTimezone(text);
+      if (!tz && llm) tz = await llm.resolveTimezone(text);
       if (!tz) return STRINGS.askTimezone[lang];
 
       const birthIso = buildBirthIso(rawDate, rawTime, tz);
