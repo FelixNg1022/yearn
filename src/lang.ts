@@ -25,7 +25,8 @@ export const TZ_MAP: Record<string, string> = {
   "denver": "-07:00", "phoenix": "-07:00", "calgary": "-07:00",
   "los angeles": "-08:00", "la": "-08:00", "san francisco": "-08:00",
   "sf": "-08:00", "seattle": "-08:00", "vancouver": "-08:00",
-  "portland": "-08:00", "san diego": "-08:00",
+  "portland": "-08:00", "san diego": "-08:00", "las vegas": "-08:00",
+  "sacramento": "-08:00", "san jose": "-08:00",
   "london": "+00:00", "dublin": "+00:00", "lisbon": "+00:00",
   "paris": "+01:00", "berlin": "+01:00", "amsterdam": "+01:00",
   "rome": "+01:00", "madrid": "+01:00", "barcelona": "+01:00",
@@ -48,7 +49,8 @@ export function resolveTimezone(location: string): string | null {
   const t = location.trim();
   // Raw offset passthrough e.g. "+08:00"
   if (/^[+-]\d{2}:\d{2}$/.test(t)) return t;
-  const lower = t.toLowerCase();
+  // Normalize: lowercase and strip punctuation so "L.A." → "la", "Hong-Kong" → "hong kong"
+  const lower = t.toLowerCase().replace(/[.\-_,;!?]/g, " ").replace(/\s+/g, " ").trim();
   for (const [k, v] of Object.entries(TZ_MAP)) {
     if (lower.includes(k)) return v;
   }
