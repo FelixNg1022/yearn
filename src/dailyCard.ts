@@ -1,6 +1,8 @@
 // src/dailyCard.ts — sends the morning daily reading card to all eligible users.
 import type { Db, UserRow } from "./db.ts";
 import type { LlmClient } from "./llm.ts";
+import type { BaziResult } from "./kernel/bazi.ts";
+import { computeDailyLuck } from "./kernel/dailyLuck.ts";
 import { castMeihua } from "./kernel/meihua.ts";
 import { renderDailyReadingCard } from "./card/render.ts";
 import { sendCard } from "./spectrum/send.ts";
@@ -13,22 +15,28 @@ export interface DailyCardDeps {
   llm: LlmClient;
 }
 
-/** Send a daily reading card to one user at their local 8am. */
+/** Send a daily reading card for the user's local calendar day. */
 export async function sendDailyCard(user: UserRow, deps: DailyCardDeps): Promise<void> {
   const { llm } = deps;
   const now = new Date();
+  const tz = user.birth_tz ?? "-07:00";
+  const bazi = JSON.parse(user.bazi_pillars!) as BaziResult;
   const cast = castMeihua(now);
+  const luck = computeDailyLuck(bazi, now, tz);
 
-  const question = user.lang === "zh"
-    ? "根据我的八字，今天的整体能量和运势如何？"
-    : "based on my 八字, what is today's energy and fortune forecast?";
-
-  const scores = await llm.getDailyScores(question, cast, user);
+  const scores = await llm.getDailyScores({
+    at: now,
+    tzOffset: tz,
+    cast,
+    bazi,
+    luck,
+    lang: user.lang,
+  });
 
   const displayName = user.name ?? user.phone.slice(-4);
   const png = await renderDailyReadingCard({
     name: displayName,
-    date: now,
+    date: new Date(Date.UTC(luck.flow.calendar.year, luck.flow.calendar.month - 1, luck.flow.calendar.day, 12, 0, 0)),
     avoid: scores.avoid,
     general: scores.general,
     relationship: scores.relationship,

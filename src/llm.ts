@@ -40,9 +40,21 @@ export interface DailyScores {
   general: number;      // 1-5
 }
 
+export interface DailyScoresInput {
+  at: Date;
+  tzOffset: string;
+  cast: unknown;
+  bazi: BaziResult;
+  luck: DailyLuckScores;
+  lang: Lang;
+}
+
 export type LuckyColorName = "orange" | "marigold" | "rose" | "magenta" | "violet" | "azure" | "teal" | "lime";
 
 import { deriveCoreLuckyAttributes, deriveProfileStatsFallback, type LuckyAttributes } from "./card/luckyAttributes.ts";
+import type { BaziResult } from "./kernel/bazi.ts";
+import type { DailyLuckScores } from "./kernel/dailyLuck.ts";
+import { localCalendarParts } from "./kernel/dailyLuck.ts";
 
 export type { LuckyAttributes };
 
@@ -62,9 +74,10 @@ export interface LlmClient {
    */
   classifyQuestion(question: string, lang: Lang): Promise<QuestionClassification>;
   /**
-   * Given the cast and user's bazi, produce daily scores and guidance.
+   * Given kernel-computed luck scores and the day's cast, produce the avoid phrase.
+   * Luck meters (1–5) come from computeDailyLuck(); the LLM only writes avoid text.
    */
-  getDailyScores(question: string, cast: unknown, user: UserRow): Promise<DailyScores>;
+  getDailyScores(input: DailyScoresInput): Promise<DailyScores>;
   /**
    * Given user's 八字 pillars, derive lucky number, color, and stone.
    * Called once at onboarding completion.
@@ -102,6 +115,36 @@ function parseJson<T>(text: string): T | null {
   } catch {
     return null;
   }
+}
+
+const AVOID_BY_AREA = {
+  en: {
+    general: "forcing the vibe",
+    relationship: "mixed signals",
+    academic: "last-minute cramming",
+    career: "overcommitting",
+  },
+  zh: {
+    general: "硬撑状态",
+    relationship: "暧昧拉扯",
+    academic: "临时抱佛脚",
+    career: "过度揽活",
+  },
+} as const;
+
+function fallbackDailyAvoid(
+  scores: Pick<DailyScores, "general" | "relationship" | "academic" | "career">,
+  lang: Lang,
+): string {
+  const table = AVOID_BY_AREA[lang];
+  const entries = [
+    ["general", scores.general],
+    ["relationship", scores.relationship],
+    ["academic", scores.academic],
+    ["career", scores.career],
+  ] as const;
+  const weakest = entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min));
+  return table[weakest[0]];
 }
 
 export function createLlm(): LlmClient {
@@ -154,37 +197,45 @@ probability: estimated percentage for specific questions based on question frami
       return { type, probability };
     },
 
-    async getDailyScores(question, cast, user) {
-      const bazi = user.bazi_pillars ? JSON.parse(user.bazi_pillars) : null;
+    async getDailyScores({ at, tzOffset, cast, bazi, luck, lang }) {
+      const cal = localCalendarParts(at, tzOffset);
+      const dateLabel = `${cal.year}-${String(cal.month).padStart(2, "0")}-${String(cal.day).padStart(2, "0")}`;
+      const scores = {
+        general: luck.general,
+        relationship: luck.relationship,
+        academic: luck.academic,
+        career: luck.career,
+      };
+
       const userPrompt = [
-        `QUESTION: ${question}`,
+        `CALENDAR DAY (${tzOffset}): ${dateLabel}`,
+        `流日: ${luck.flow.day_pillar.gan_zhi} · 流月: ${luck.flow.month_pillar.gan_zhi}`,
+        "",
+        "PRE-COMPUTED LUCK SCORES (1–5, do NOT change these):",
+        JSON.stringify(scores),
         "",
         "CAST:",
         JSON.stringify(cast, null, 2),
         "",
         "USER 八字:",
-        bazi ? JSON.stringify(bazi, null, 2) : "(not set)",
+        JSON.stringify(bazi, null, 2),
         "",
-        `Given today's date, the divination cast, and the user's 八字, forecast TODAY's energy across four luck areas.
-Score each 1-5 based on how today's elemental energy interacts with their day master and pillars.
-avoid: one short Gen-Z phrase for what to sidestep today (≤8 words).
-Output strict JSON only:
-{"avoid":"<≤8 words>","relationship":<1-5>,"academic":<1-5>,"career":<1-5>,"general":<1-5>}
-Output JSON only. No code fences. No commentary.`,
+        `Write one short Gen-Z "try to avoid…" phrase (≤8 words, ${lang}) grounded in today's 流日 vs their 日主 (${bazi.day_master}/${bazi.day_master_element}) and the weakest luck area.`,
+        `Output strict JSON only: {"avoid":"<≤8 words>"}`,
       ].join("\n");
 
-      const fallback = { avoid: "overcommitting", relationship: 3, academic: 3, career: 3, general: 3 };
-      const text = await chat("You produce daily divination scores in JSON format. Output JSON only.", userPrompt, 200);
-      const parsed = parseJson<Record<string, unknown>>(text);
-      if (!parsed) return fallback;
-      const clamp = (v: unknown): number => Math.max(1, Math.min(5, Math.round(typeof v === "number" ? v : 3)));
-      return {
-        avoid: typeof parsed.avoid === "string" ? parsed.avoid : fallback.avoid,
-        relationship: clamp(parsed.relationship),
-        academic: clamp(parsed.academic),
-        career: clamp(parsed.career),
-        general: clamp(parsed.general),
-      };
+      const fallbackAvoid = fallbackDailyAvoid(scores, lang);
+      const text = await chat(
+        "You write a single daily avoid phrase in JSON. Luck scores are already computed — never output or change them.",
+        userPrompt,
+        120,
+      );
+      const parsed = parseJson<{ avoid?: unknown }>(text);
+      const avoid = typeof parsed?.avoid === "string" && parsed.avoid.trim()
+        ? parsed.avoid.trim()
+        : fallbackAvoid;
+
+      return { avoid, ...scores };
     },
 
     async getLuckyAttributes(bazi, _lang) {
