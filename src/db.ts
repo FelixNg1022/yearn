@@ -18,6 +18,8 @@ export interface ProfileCardData {
   millionaireChance: number;
   meetLoveAge: number;
   projection: string;
+  /** Present when stats were LLM-generated; used to avoid re-rolling on /profile. */
+  statsVersion?: number;
 }
 
 export interface UserRow {

@@ -1,10 +1,14 @@
 import { describe, test, expect } from "bun:test";
-import { deriveLuckyAttributes, hashBazi } from "../src/card/luckyAttributes.ts";
+import {
+  deriveCoreLuckyAttributes,
+  deriveProfileStatsFallback,
+  hashBazi,
+} from "../src/card/luckyAttributes.ts";
 import { VALID_STONES } from "../src/card/stones.ts";
 import fs from "node:fs";
 import path from "node:path";
 
-describe("deriveLuckyAttributes", () => {
+describe("deriveCoreLuckyAttributes", () => {
   const sampleBazi = {
     year: { stem: "甲", branch: "子" },
     month: { stem: "丙", branch: "寅" },
@@ -13,13 +17,13 @@ describe("deriveLuckyAttributes", () => {
   };
 
   test("is stable for the same 八字", () => {
-    const a = deriveLuckyAttributes(sampleBazi);
-    const b = deriveLuckyAttributes(sampleBazi);
+    const a = deriveCoreLuckyAttributes(sampleBazi);
+    const b = deriveCoreLuckyAttributes(sampleBazi);
     expect(a).toEqual(b);
   });
 
   test("returns only valid stones and colors", () => {
-    const attrs = deriveLuckyAttributes(sampleBazi);
+    const attrs = deriveCoreLuckyAttributes(sampleBazi);
     expect(VALID_STONES).toContain(attrs.stone);
     expect(attrs.number).toBeGreaterThanOrEqual(1);
     expect(attrs.number).toBeLessThanOrEqual(9);
@@ -28,6 +32,16 @@ describe("deriveLuckyAttributes", () => {
   test("changes when 八字 changes", () => {
     const other = { ...sampleBazi, day: { stem: "甲", branch: "子" } };
     expect(hashBazi(sampleBazi)).not.toBe(hashBazi(other));
+  });
+});
+
+describe("deriveProfileStatsFallback", () => {
+  test("differs for different 八字", () => {
+    const a = { day: { stem: "癸", branch: "亥" } };
+    const b = { day: { stem: "甲", branch: "子" } };
+    const statsA = deriveProfileStatsFallback(a);
+    const statsB = deriveProfileStatsFallback(b);
+    expect(statsA.millionaireChance).not.toBe(statsB.millionaireChance);
   });
 });
 

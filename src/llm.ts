@@ -43,7 +43,7 @@ export interface DailyScores {
 
 export type LuckyColorName = "orange" | "marigold" | "rose" | "magenta" | "violet" | "azure" | "teal" | "lime";
 
-import { deriveLuckyAttributes, type LuckyAttributes } from "./card/luckyAttributes.ts";
+import { deriveCoreLuckyAttributes, deriveProfileStatsFallback, type LuckyAttributes } from "./card/luckyAttributes.ts";
 
 export type { LuckyAttributes };
 
@@ -71,6 +71,8 @@ export interface LlmClient {
    * Called once at onboarding completion.
    */
   getLuckyAttributes(bazi: unknown, lang: Lang): Promise<LuckyAttributes>;
+  /** LLM-read 八字 for personalized millionaire % and meet-love age. */
+  getProfileStats(input: { bazi: unknown; name: string | null; lang: Lang }): Promise<{ millionaireChance: number; meetLoveAge: number }>;
   /** One- or two-sentence broad fortune blurb for the profile card projection box. */
   getProfileProjection(input: { bazi: unknown; name: string | null; lang: Lang }): Promise<string>;
   /**
@@ -184,7 +186,52 @@ Output JSON only. No code fences. No commentary.`,
     },
 
     async getLuckyAttributes(bazi, _lang) {
-      return deriveLuckyAttributes(bazi);
+      const core = deriveCoreLuckyAttributes(bazi);
+      const stats = deriveProfileStatsFallback(bazi);
+      return { ...core, ...stats };
+    },
+
+    async getProfileStats({ bazi, name, lang }) {
+      const fallback = deriveProfileStatsFallback(bazi);
+
+      const text = await chat(
+        `You are a 八字 (Four Pillars of Destiny) reader estimating two playful profile-card stats.
+Read the full chart: day master (日主), element balance, wealth star (财星), resource stars (印星), and spouse/peach blossom (桃花) indicators.
+
+millionaireChance: integer 0-100 — this user's personalized probability of becoming a millionaire.
+- Strong 财星, supportive day master, and good wealth cycles → higher (often 55-92).
+- Weak or clashed wealth indicators → lower (often 18-54).
+- Each unique chart must get a distinct, justified value. Never copy a default like 72 or 50.
+
+meetLoveAge: integer 18-45 — age they'll meet their romantic partner.
+- Base on spouse palace, 桃花 stars, and element harmony in the chart.
+- Personalize per chart; avoid clustering everyone at the same age.
+
+Output strict JSON only:
+{"millionaireChance":<0-100>,"meetLoveAge":<18-45>}
+No code fences. No commentary.`,
+        [
+          `USER: ${name ?? "friend"}`,
+          `八字: ${JSON.stringify(bazi)}`,
+          `Lang: ${lang}`,
+          "",
+          "Analyze this specific chart and return JSON with both fields.",
+        ].join("\n"),
+        80,
+      );
+
+      const parsed = parseJson<{ millionaireChance?: unknown; meetLoveAge?: unknown }>(text);
+      if (!parsed) return fallback;
+
+      const clampPct = (v: unknown, fb: number) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : fb;
+      const clampAge = (v: unknown, fb: number) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.max(18, Math.min(45, Math.round(v))) : fb;
+
+      return {
+        millionaireChance: clampPct(parsed.millionaireChance, fallback.millionaireChance),
+        meetLoveAge: clampAge(parsed.meetLoveAge, fallback.meetLoveAge),
+      };
     },
 
     async getProfileProjection({ bazi, name, lang }) {

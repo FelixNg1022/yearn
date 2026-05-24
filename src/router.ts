@@ -8,7 +8,11 @@ import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
 import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./card/render.ts";
 import { trimProjection } from "./card/projection.ts";
-import { deriveLuckyAttributes } from "./card/luckyAttributes.ts";
+import {
+  deriveCoreLuckyAttributes,
+  PROFILE_STATS_VERSION,
+} from "./card/luckyAttributes.ts";
+import { normalizeStone } from "./card/stones.ts";
 import type { ProfileCardData } from "./db.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
@@ -198,8 +202,8 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     const { db } = deps;
     const displayName = user.name ?? phone.slice(-4);
     try {
-      // Regenerate projection; lucky number/color/stone are fixed per 八字.
-      const data = await generateProfileCardData(user, deps);
+      // Refresh projection only; core attrs + LLM stats stay stable once assigned.
+      const data = await generateProfileCardData(user, deps, { refreshProjectionOnly: true });
       await db.saveProfileCardData(phone, data);
 
       const png = await renderProfileCard({
@@ -273,24 +277,57 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
   }
 }
 
+function parseStoredProfileCard(json: string | null): ProfileCardData | null {
+  if (!json) return null;
+  try {
+    const raw = JSON.parse(json) as ProfileCardData;
+    if (typeof raw.luckyNumber !== "number") return null;
+    return {
+      ...raw,
+      luckyStone: normalizeStone(raw.luckyStone),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function generateProfileCardData(
   user: import("./db.ts").UserRow,
   deps: RouterDeps,
+  options?: { refreshProjectionOnly?: boolean },
 ): Promise<ProfileCardData> {
   const { llm } = deps;
   const bazi = JSON.parse(user.bazi_pillars!);
-  const attrs = deriveLuckyAttributes(bazi);
+  const core = deriveCoreLuckyAttributes(bazi);
+  const stored = parseStoredProfileCard(user.profile_card_json);
+
+  const needsFreshStats =
+    !stored ||
+    stored.statsVersion !== PROFILE_STATS_VERSION;
+
+  let millionaireChance: number;
+  let meetLoveAge: number;
+
+  if (options?.refreshProjectionOnly && stored && !needsFreshStats) {
+    millionaireChance = stored.millionaireChance;
+    meetLoveAge = stored.meetLoveAge;
+  } else {
+    const stats = await llm.getProfileStats({ bazi, name: user.name, lang: user.lang });
+    millionaireChance = stats.millionaireChance;
+    meetLoveAge = stats.meetLoveAge;
+  }
 
   const projectionRaw = await llm.getProfileProjection({ bazi, name: user.name, lang: user.lang });
   const projection = trimProjection(projectionRaw, user.lang);
 
   return {
-    luckyNumber: attrs.number,
-    luckyColor: attrs.color,
-    luckyStone: attrs.stone,
-    millionaireChance: attrs.millionaireChance,
-    meetLoveAge: attrs.meetLoveAge,
+    luckyNumber: core.number,
+    luckyColor: core.color,
+    luckyStone: core.stone,
+    millionaireChance,
+    meetLoveAge,
     projection,
+    statsVersion: PROFILE_STATS_VERSION,
   };
 }
 
