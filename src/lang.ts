@@ -75,35 +75,35 @@ export const STRINGS = {
     zh: "快好啦！你在哪里出生？（说城市就好，比如深圳或上海）",
   },
   askTimezone: {
-    en: "hmm i don't know that city yet! what's your UTC offset? (e.g. +08:00 for China, -05:00 for NYC)",
-    zh: "哎，暂时没这个城市的数据！能告诉我你的时区吗？（如中国 +08:00，纽约 -05:00）",
+    en: "hmm that city's not in my atlas yet 🗺️ drop your UTC offset and we're good — e.g. +08:00 for China, -05:00 for NYC, -08:00 for LA",
+    zh: "哎，暂时没这个城市的数据！告诉我时区就好——如中国 +08:00，纽约 -05:00，洛杉矶 -08:00",
   },
   onboardingComplete: {
     en: "ur 八字 is locked in ✨ your profile card is on its way! ask me anything — the universe is ready to spill",
     zh: "八字已解锁 ✨ 个人卦盘正在发送！随时来问，宇宙随时回答",
   },
   invalidDate: {
-    en: "hmm couldn't read that date — try: Oct 22, 2002 or 2002-10-22",
+    en: "hmm couldn't read that date 🤔 try something like: Oct 22, 2002 or 2002-10-22",
     zh: "没认出这个日期，试试：2002-10-22 或 2002年10月22日",
   },
   invalidTime: {
-    en: "couldn't read that time — try: 18:00 or 6:00 PM, or say 'skip'",
+    en: "couldn't catch that time — try: 18:00 or 6:00 PM, or say 'skip' if you're not sure",
     zh: "没认出这个时间，试试：18:00 或 下午6点，或回「跳过」",
   },
   rateLimited: {
-    en: "you've asked a lot today — the stars need a breather. come back tomorrow!",
+    en: "bestie you've been asking a LOT today 😭 the stars need a breather — come back tomorrow!",
     zh: "今天问了很多啦，宇宙需要休息一下——明天见！",
   },
   deletePrompt: {
-    en: "this will delete everything — your 八字 and all readings. reply 'confirm delete' to proceed, or anything else to cancel.",
-    zh: "这将删除一切——你的八字和所有卦象。回「confirm delete」确认，或回其他内容取消。",
+    en: "wait bestie 🫣 this deletes everything — your 八字 and all your readings. reply 'confirm delete' to go through with it, or anything else to cancel.",
+    zh: "等等！这将删除一切——你的八字和所有卦象。回「confirm delete」确认，或回其他内容取消。",
   },
   deleteConfirmed: {
-    en: "all clear. start fresh anytime — yearn will be here.",
+    en: "all cleared ✨ start fresh whenever — yearn will be here.",
     zh: "全部清除了。随时可以重新开始，yearn 一直在这里。",
   },
   deleteCancelled: {
-    en: "nothing changed, all good!",
+    en: "okay phew, nothing changed 😮‍💨",
     zh: "什么都没变，放心！",
   },
   sharePrompt: {
@@ -111,8 +111,8 @@ export const STRINGS = {
     zh: "宇宙真的说对了！要生成分享卡吗？回「分享」",
   },
   outcomeYes: {
-    en: "logged: it played out ✅",
-    zh: "记下来了：这次准了 ✅",
+    en: "IT CAME TRUE 🎯 the universe understood the assignment. logged!",
+    zh: "应验了 🎯 宇宙没让你失望！记下来了",
   },
   outcomeNo: {
     en: "logged: it didn't 🌑 cosmic misses are rare — it usually means the energy shifted before it could land. the universe is recalibrating. ask again whenever you're ready ✨",

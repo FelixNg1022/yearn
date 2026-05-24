@@ -34,10 +34,10 @@ export async function handleCommand(
     case "/lang": {
       const arg = args[0]?.toLowerCase();
       if (arg !== "en" && arg !== "zh") {
-        return { reply: lang === "zh" ? "用法：/lang en 或 /lang zh" : "usage: /lang en | /lang zh" };
+        return { reply: lang === "zh" ? "试试 /lang en 或 /lang zh" : "try /lang en or /lang zh ✨" };
       }
       await db.setUserLang(user.phone, arg);
-      return { reply: arg === "zh" ? "已切换为中文。" : "switched to English." };
+      return { reply: arg === "zh" ? "切换到中文啦 ✨" : "switching to english, got it ✨" };
     }
 
     case "/profile":
@@ -52,7 +52,7 @@ export async function handleCommand(
       return { reply: STRINGS.deletePrompt[lang] };
 
     default:
-      return { reply: lang === "zh" ? "不认识这个命令。试试 /help。" : "unknown command. try /help." };
+      return { reply: lang === "zh" ? "不认识这个命令，试试 /help 看看有啥～" : "hmm i don't know that one — try /help for the full list ✨" };
   }
 }
 
@@ -90,7 +90,7 @@ function help(lang: Lang): string {
 async function history(user: UserRow, db: Db): Promise<string> {
   const recent = await db.getRecentReadings(user.phone, 5);
   if (recent.length === 0) {
-    return user.lang === "zh" ? "还没有卦。问一个吧。" : "no readings yet. ask one.";
+    return user.lang === "zh" ? "还没问过卦呢，发个问题试试吧 ✨" : "no readings yet — ask the universe something ✨";
   }
   return recent.map((r, i) => {
     const date = new Date(r.created_at).toISOString().slice(0, 10);
@@ -102,7 +102,7 @@ async function history(user: UserRow, db: Db): Promise<string> {
 async function stats(user: UserRow, db: Db): Promise<string> {
   const s = await db.getStats(user.phone);
   const zh = user.lang === "zh";
-  if (s.total === 0) return zh ? "还没有卦。问一个吧。" : "no readings yet. ask one.";
+  if (s.total === 0) return zh ? "还没问过卦呢，发个问题试试吧 ✨" : "no readings yet — ask the universe something ✨";
   const decided = s.yes + s.no;
   const hitRate = decided > 0 ? Math.round((s.yes / decided) * 100) : null;
   const hitLine = hitRate === null

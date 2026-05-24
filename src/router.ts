@@ -53,8 +53,8 @@ export async function route(
   if (GREETING_PATTERNS.test(trimmed) && user.onboarding_state === "complete") {
     const name = user.name ? `, ${user.name}` : "";
     const msg = user.lang === "zh"
-      ? `欢迎回来${name}！✨ 有什么想问宇宙的吗？`
-      : `welcome back${name}! ✨ what do you want to ask the universe today?`;
+      ? `欢迎回来${name}！✨ 想问宇宙什么？`
+      : `omg welcome back${name} ✨ what's on your mind? the universe is listening`;
     await sendText(phone, msg);
     return;
   }
@@ -99,7 +99,7 @@ export async function route(
         name: displayName,
         shareUrl: SHARE_URL,
       });
-      await sendCard(phone, "🎯 called it.", png);
+      await sendCard(phone, "the universe called it 🎯 here's your card", png);
       await db.markShared(yesOutcome.reading_id);
     }
     return;
@@ -178,8 +178,8 @@ export async function route(
 async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
   if (!user.bazi_pillars) {
     await sendText(phone, user.lang === "zh"
-      ? "还没有八字数据哦，先完成设置吧～ 发「/setup」开始"
-      : "no 八字 on file yet — send /setup to get started!");
+      ? "还没有八字数据哦～ 发「/setup」来设置一下吧 ✨"
+      : "i need your 八字 first ✨ send /setup to get started!");
     return;
   }
 
@@ -219,8 +219,8 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
       console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "sendProfileCard", phone: phone.slice(-4), err: String(err) }));
       try {
         await sendText(phone, user.lang === "zh"
-          ? "卦盘生成出错了，稍后再发 /profile 试试！"
-          : "something went wrong with your card — send /profile again in a moment!");
+          ? "卦盘遇到点小问题，稍后再发 /profile 试试！"
+          : "the stars fumbled that one 😭 try /profile again in a sec!");
       } catch { /* best-effort */ }
     }
   })();
