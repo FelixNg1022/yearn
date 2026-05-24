@@ -117,10 +117,13 @@ export async function route(
           responded_at: now,
           shared: 0,
         });
-        const ack = outcomeAck(parsed.outcome, user.lang);
-        await sendText(phone, ack);
         if (parsed.outcome === "yes") {
+          await sendText(phone, STRINGS.outcomeYes[user.lang]);
           await sendShareInvite(phone, user.lang);
+        } else if (parsed.outcome === "no") {
+          await sendText(phone, STRINGS.outcomeNo[user.lang]);
+        } else {
+          await sendText(phone, STRINGS.outcomeMixed[user.lang]);
         }
         return;
       }
@@ -227,6 +230,13 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
  *  then arms the daily card scheduler for 8am local time. */
 async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
   const { db } = deps;
+
+  // Arm daily card first — card render failure must not block scheduling
+  if (user.birth_tz) {
+    const nextAt = nextEightAmUtc(user.birth_tz, Date.now());
+    await db.enableDailyCard(phone, nextAt);
+  }
+
   try {
     const data = await generateProfileCardData(user, deps);
     await db.saveProfileCardData(phone, data);
@@ -238,18 +248,13 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
       luckyColor: data.luckyColor,
       luckyStone: data.luckyStone,
       projection: data.projection,
+      shareUrl: SHARE_URL,
     });
 
     const caption = user.lang === "zh"
       ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
       : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
     await sendCard(phone, caption, png);
-
-    // Arm daily card delivery at next 8am local time
-    if (user.birth_tz) {
-      const nextAt = nextEightAmUtc(user.birth_tz, Date.now());
-      await db.enableDailyCard(phone, nextAt);
-    }
   } catch (err) {
     console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "prepareProfileCard", phone: phone.slice(-4), err: String(err) }));
     // Notify the user so they're not left in silence
@@ -300,13 +305,3 @@ export function nextEightAmUtc(tzOffset: string, fromMs: number): number {
   return target - offsetMs;
 }
 
-function outcomeAck(outcome: "yes" | "no" | "mixed", lang: "en" | "zh"): string {
-  if (lang === "zh") {
-    if (outcome === "yes") return "好，记下来了：这次准了 ✅";
-    if (outcome === "no") return "好，记下来了：这次没准 ❌";
-    return "好，记下来了：一半一半 ⚖️";
-  }
-  if (outcome === "yes") return "logged: it played out ✅";
-  if (outcome === "no") return "logged: it didn't ❌";
-  return "logged: mixed ⚖️";
-}

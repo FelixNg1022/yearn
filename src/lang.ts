@@ -110,6 +110,18 @@ export const STRINGS = {
     en: "the universe literally called it ✨ want a shareable card? reply 'share'",
     zh: "宇宙真的说对了！要生成分享卡吗？回「分享」",
   },
+  outcomeYes: {
+    en: "logged: it played out ✅",
+    zh: "记下来了：这次准了 ✅",
+  },
+  outcomeNo: {
+    en: "logged: it didn't 🌑 cosmic misses are rare — it usually means the energy shifted before it could land. the universe is recalibrating. ask again whenever you're ready ✨",
+    zh: "记下来了：这次没准 🌑 宇宙偶尔也会跑偏——通常意味着能量在落地前就转移了。宇宙正在重新校准，随时可以再来问 ✨",
+  },
+  outcomeMixed: {
+    en: "logged: mixed 🌗 half the cosmos showed up — that's still a reading! add context anytime by replying 'mixed [what happened]'",
+    zh: "记下来了：一半一半 🌗 宇宙说对了一半——这也算数！想补充细节就回「mixed 发生了什么」",
+  },
   followUpNote: {
     en: "(i'll check back when the time comes — reply yes / no / mixed!)",
     zh: "（到时候我会来问结果的——回 yes / no / mixed！）",

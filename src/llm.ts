@@ -233,13 +233,18 @@ Rules:
       const { question, lang, kernel, user, recent } = input;
       const bazi = user.bazi_pillars ? JSON.parse(user.bazi_pillars) : null;
       const recentBlock = recent.length
-        ? recent.slice(0, 3).map((r, i) => {
+        ? recent.slice(0, 5).map((r, i) => {
             const date = new Date(r.created_at).toISOString().slice(0, 10);
-            return `  ${i + 1}. [${date}] "${r.question.slice(0, 80)}"`;
+            const outcomeStr = r.outcome ? ` → outcome: ${r.outcome}${r.user_note ? ` (${r.user_note})` : ""}` : " → outcome: pending";
+            return [
+              `  ${i + 1}. [${date}] Q: "${r.question.slice(0, 80)}"`,
+              `      reply: "${r.interpretation.slice(0, 120)}"${outcomeStr}`,
+            ].join("\n");
           }).join("\n")
         : "  (none)";
 
       const userPrompt = [
+        `USER: ${user.name ?? "unknown"}`,
         `QUESTION: ${question}`,
         "",
         "CAST (deterministic kernel output):",
@@ -248,10 +253,10 @@ Rules:
         "USER 八字 CONTEXT:",
         bazi ? JSON.stringify(bazi, null, 2) : "  (not set — no hour pillar)",
         "",
-        "PAST READINGS (last 3):",
+        "PAST READINGS (last 5, with what you said before and how it played out):",
         recentBlock,
         "",
-        `Respond in ${lang === "zh" ? "中文" : "English"}. Be specific. Commit to a reading. Keep the Gen Z bestie energy.`,
+        `Respond in ${lang === "zh" ? "中文" : "English"}. Be specific. Commit to a reading. Keep the Gen Z bestie energy. Don't repeat phrasing from past readings.`,
       ].join("\n");
 
       const text = await chat(SYSTEM_PROMPT, userPrompt, 600);

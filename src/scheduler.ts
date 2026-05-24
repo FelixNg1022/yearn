@@ -4,6 +4,7 @@ import type { LlmClient } from "./llm.ts";
 import type { Lang } from "./lang.ts";
 import { sendFollowUp } from "./spectrum/send.ts";
 import { tickDailyCards } from "./dailyCard.ts";
+import { nextEightAmUtc } from "./router.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -38,6 +39,18 @@ export function createScheduler(opts: SchedulerOptions): Scheduler {
 
   const tick = async (): Promise<void> => {
     const now = Date.now();
+
+    // Heal: arm daily cards for any complete users who slipped through
+    try {
+      const unarmed = await db.getCompleteUsersWithoutDailyCard();
+      for (const u of unarmed) {
+        const nextAt = nextEightAmUtc(u.birth_tz!, now);
+        await db.enableDailyCard(u.phone, nextAt);
+        console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "healed daily card", phone: u.phone.slice(-4) }));
+      }
+    } catch (err) {
+      console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "heal daily cards", err: String(err) }));
+    }
 
     // Daily morning cards
     await tickDailyCards(now, { db, llm });

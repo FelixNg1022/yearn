@@ -46,14 +46,12 @@ export interface ReadingRow {
   created_at: number;
   follow_up_at: number;
   followed_up: 0 | 1;
-  /**
-   * Number of days the user's question pointed at (e.g. "in 3 days" → 3).
-   * Null when no horizon was extractable and the global default was used.
-   * Stored for analytics + future tuning of the buffer policy.
-   */
   predicted_horizon_days: number | null;
   question_type: "general" | "specific" | null;
   predicted_probability: number | null;
+  // Joined from outcomes table — present when getRecentReadings is called
+  outcome?: "yes" | "no" | "mixed" | null;
+  user_note?: string | null;
 }
 
 export interface OutcomeRow {
@@ -103,6 +101,7 @@ export interface Db {
   saveProfileCardData(phone: string, data: ProfileCardData): Promise<void>;
   enableDailyCard(phone: string, nextAt: number): Promise<void>;
   getUsersDueForDailyCard(now: number): Promise<UserRow[]>;
+  getCompleteUsersWithoutDailyCard(): Promise<UserRow[]>;
   setNextDailyAt(phone: string, nextAt: number): Promise<void>;
   upsertUser(u: UpsertUser): Promise<void>;
   touchLastSeen(phone: string, now: number): Promise<void>;
@@ -380,10 +379,22 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
 
     async getRecentReadings(phone, limit) {
       const r = await client.execute({
-        sql: "SELECT * FROM readings WHERE phone = ? ORDER BY created_at DESC LIMIT ?",
+        sql: `SELECT r.*, o.outcome, o.user_note
+              FROM readings r
+              LEFT JOIN outcomes o ON o.reading_id = r.id
+              WHERE r.phone = ?
+              ORDER BY r.created_at DESC LIMIT ?`,
         args: [phone, limit],
       });
-      return r.rows.map(toReading);
+      const VALID_OUTCOMES = new Set(["yes", "no", "mixed"]);
+      return r.rows.map((row) => {
+        const raw = row.outcome as string | null;
+        return {
+          ...toReading(row),
+          outcome: (raw && VALID_OUTCOMES.has(raw) ? raw : null) as "yes" | "no" | "mixed" | null,
+          user_note: (row.user_note as string | null) ?? null,
+        };
+      });
     },
 
     async getPendingFollowUps(now) {
@@ -500,6 +511,14 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
       const r = await client.execute({
         sql: "SELECT * FROM users WHERE daily_card_enabled = 1 AND onboarding_state = 'complete' AND next_daily_at > 0 AND next_daily_at <= ?",
         args: [now],
+      });
+      return r.rows.map(toUser);
+    },
+
+    async getCompleteUsersWithoutDailyCard() {
+      const r = await client.execute({
+        sql: "SELECT * FROM users WHERE onboarding_state = 'complete' AND birth_tz IS NOT NULL AND (daily_card_enabled = 0 OR next_daily_at = 0)",
+        args: [],
       });
       return r.rows.map(toUser);
     },

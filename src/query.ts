@@ -110,7 +110,7 @@ export async function runQuery(
   // Classify the question type in parallel with horizon extraction results.
   const classification = await llm.classifyQuestion(text, lang);
 
-  const recent = await db.getRecentReadings(phone, 3);
+  const recent = await db.getRecentReadings(phone, 5);
   const followUpAt = now + followUpMs;
 
   if (classification.type === "specific") {
