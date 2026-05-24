@@ -310,7 +310,12 @@ Rules:
       ].filter(Boolean).join("\n");
 
       const text = await chat(SYSTEM_PROMPT, userPrompt, 180);
-      if (!text) throw new Error("OpenRouter response missing text");
+      if (!text) {
+        // Model returned empty — common for very short/ambiguous inputs. Return a soft fallback.
+        return lang === "zh"
+          ? "宇宙今天有点安静，换个问题试试吧 ✨"
+          : "the universe went quiet on that one ✨ try rephrasing or ask something else!";
+      }
       return text;
     },
   };

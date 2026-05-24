@@ -130,46 +130,63 @@ async function startApp(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-  console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "inbound loop started" }));
-  for await (const [space, message] of app.messages) {
-    const sender = (message as unknown as { sender?: { id?: string } }).sender;
-    const phone = sender?.id ?? "";
-    const spaceType = (space as unknown as { type?: string }).type;
-    const spacePhone = (space as unknown as { phone?: string }).phone;
-    const platform = (message as unknown as { platform?: string }).platform;
-    const ctype = message.content.type;
-    const text = ctype === "text" ? (message.content as { text: string }).text : "";
-
-    console.log(JSON.stringify({
-      ts: new Date().toISOString(), level: "INFO", msg: "inbound",
-      platform, spaceType, spacePhone, sender_id: phone, ctype, text_len: text.length,
-    }));
-
-    if (!phone.startsWith("+")) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: no + prefix", phone })); continue; }
-    if (spaceType && spaceType !== "dm") { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: not dm", spaceType })); continue; }
-    if (!text.trim()) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: empty text" })); continue; }
-
-    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "routing", phone: phone.slice(-4), text_preview: text.slice(0, 20) }));
+  // Reconnect loop — if the Spectrum WebSocket drops, reinitialise and resume.
+  let reconnectDelayMs = 5_000;
+  while (true) {
     try {
-      await space.responding(async () => {
-        console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding cb start" }));
+      const liveApp = await initSpectrum();
+      reconnectDelayMs = 5_000; // reset backoff on successful connect
+
+      console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "inbound loop started" }));
+      for await (const [space, message] of liveApp.messages) {
+        const sender = (message as unknown as { sender?: { id?: string } }).sender;
+        const phone = sender?.id ?? "";
+        const spaceType = (space as unknown as { type?: string }).type;
+        const spacePhone = (space as unknown as { phone?: string }).phone;
+        const platform = (message as unknown as { platform?: string }).platform;
+        const ctype = message.content.type;
+        const text = ctype === "text" ? (message.content as { text: string }).text : "";
+
+        console.log(JSON.stringify({
+          ts: new Date().toISOString(), level: "INFO", msg: "inbound",
+          platform, spaceType, spacePhone, sender_id: phone, ctype, text_len: text.length,
+        }));
+
+        if (!phone.startsWith("+")) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: no + prefix", phone })); continue; }
+        if (spaceType && spaceType !== "dm") { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: not dm", spaceType })); continue; }
+        if (!text.trim()) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: empty text" })); continue; }
+
+        console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "routing", phone: phone.slice(-4), text_preview: text.slice(0, 20) }));
         try {
-          await route(phone, text, new Date(message.timestamp), { db, llm });
-          console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "route ok" }));
+          await space.responding(async () => {
+            console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding cb start" }));
+            try {
+              await route(phone, text, new Date(message.timestamp), { db, llm });
+              console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "route ok" }));
+            } catch (err) {
+              console.error(JSON.stringify({
+                ts: new Date().toISOString(), level: "ERROR", msg: "route threw",
+                phone: phone.slice(-4), err: String(err),
+                stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4).join(" | ") : undefined,
+              }));
+            }
+          });
+          console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding done" }));
         } catch (err) {
-          console.error(JSON.stringify({
-            ts: new Date().toISOString(), level: "ERROR", msg: "route threw",
-            phone: phone.slice(-4), err: String(err),
-            stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4).join(" | ") : undefined,
-          }));
+          console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "responding threw", err: String(err) }));
         }
-      });
-      console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding done" }));
+      }
+      console.log(JSON.stringify({ ts: new Date().toISOString(), level: "WARN", msg: "inbound loop ended — reconnecting" }));
     } catch (err) {
-      console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "responding threw", err: String(err) }));
+      console.error(JSON.stringify({
+        ts: new Date().toISOString(), level: "ERROR", msg: "spectrum connect failed — reconnecting",
+        err: String(err), retry_in_ms: reconnectDelayMs,
+      }));
     }
+
+    await Bun.sleep(reconnectDelayMs);
+    reconnectDelayMs = Math.min(reconnectDelayMs * 2, 60_000);
   }
-  console.log(JSON.stringify({ ts: new Date().toISOString(), level: "WARN", msg: "inbound loop ended" }));
 }
 
 startApp().catch((err) => {
