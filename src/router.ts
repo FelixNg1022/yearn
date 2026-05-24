@@ -171,11 +171,8 @@ export async function route(
   await sendText(phone, result.reply);
 }
 
-/** Called on /profile — reads cached data from DB, renders with Playwright, sends. No LLM. */
+/** Called on /profile — acks immediately, then generates + sends the card in the background. */
 async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, deps: RouterDeps): Promise<void> {
-  const { db } = deps;
-  const displayName = user.name ?? phone.slice(-4);
-
   if (!user.bazi_pillars) {
     await sendText(phone, user.lang === "zh"
       ? "还没有八字数据哦，先完成设置吧～ 发「/setup」开始"
@@ -183,37 +180,47 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     return;
   }
 
-  // Use cached profile card data if available; otherwise regenerate it now.
-  let data: import("./db.ts").ProfileCardData | null = user.profile_card_json
-    ? (JSON.parse(user.profile_card_json) as import("./db.ts").ProfileCardData)
-    : null;
+  // Ack immediately so the user isn't left in silence
+  await sendText(phone, user.lang === "zh"
+    ? "卦盘正在生成中 ✨ 好了马上发给你！"
+    : "brewing your profile card ✨ i'll send it your way when it's ready!");
 
-  if (!data) {
+  // Generate + send in background — caller doesn't need to await
+  void (async () => {
+    const { db } = deps;
+    const displayName = user.name ?? phone.slice(-4);
     try {
-      data = await generateProfileCardData(user, deps);
-      await db.saveProfileCardData(phone, data);
-    } catch {
-      const msg = user.lang === "zh"
-        ? "正在生成你的卦盘，稍后再试 /profile 就好！"
-        : "still working on your profile card — try /profile again in a moment!";
-      await sendText(phone, msg);
-      return;
+      let data: import("./db.ts").ProfileCardData | null = user.profile_card_json
+        ? (JSON.parse(user.profile_card_json) as import("./db.ts").ProfileCardData)
+        : null;
+
+      if (!data) {
+        data = await generateProfileCardData(user, deps);
+        await db.saveProfileCardData(phone, data);
+      }
+
+      const png = await renderProfileCard({
+        name: displayName,
+        luckyNumber: data.luckyNumber,
+        luckyColor: data.luckyColor,
+        luckyStone: data.luckyStone,
+        projection: data.projection,
+        shareUrl: SHARE_URL,
+      });
+
+      const caption = user.lang === "zh"
+        ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
+        : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
+      await sendCard(phone, caption, png);
+    } catch (err) {
+      console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "sendProfileCard", phone: phone.slice(-4), err: String(err) }));
+      try {
+        await sendText(phone, user.lang === "zh"
+          ? "卦盘生成出错了，稍后再发 /profile 试试！"
+          : "something went wrong with your card — send /profile again in a moment!");
+      } catch { /* best-effort */ }
     }
-  }
-
-  const png = await renderProfileCard({
-    name: displayName,
-    luckyNumber: data.luckyNumber,
-    luckyColor: data.luckyColor,
-    luckyStone: data.luckyStone,
-    projection: data.projection,
-    shareUrl: SHARE_URL,
-  });
-
-  const caption = user.lang === "zh"
-    ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
-    : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
-  await sendCard(phone, caption, png);
+  })();
 }
 
 /** Called once at onboarding completion. Generates + stores profile card data, sends the card,
