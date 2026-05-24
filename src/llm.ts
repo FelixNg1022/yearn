@@ -187,7 +187,17 @@ Output JSON only. No code fences. No commentary.`,
     async getLuckyAttributes(bazi, lang) {
       const VALID_COLORS = ["orange", "marigold", "rose", "magenta", "violet", "azure", "teal", "lime"] as const;
       const VALID_STONES = ["emerald", "ruby", "sapphire"] as const;
-      const fallback = { number: 7, color: "violet" as const, stone: "amethyst" as unknown as "sapphire" };
+
+      // Deterministic fallback derived from bazi so each user gets unique values.
+      const baziStr = JSON.stringify(bazi);
+      let h = 0;
+      for (let i = 0; i < baziStr.length; i++) h = (Math.imul(31, h) + baziStr.charCodeAt(i)) >>> 0;
+      const fallback = {
+        number: (h % 9) + 1,
+        color: VALID_COLORS[h % VALID_COLORS.length]!,
+        stone: VALID_STONES[h % VALID_STONES.length]!,
+      };
+
       const text = await chat(
         `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements.
 Color must be one of exactly: orange, marigold, rose, magenta, violet, azure, teal, lime.
@@ -204,8 +214,8 @@ Output JSON only. No code fences. No commentary.`,
       const rawStone = (typeof parsed.stone === "string" ? parsed.stone.toLowerCase() : "") as typeof VALID_STONES[number];
       return {
         number: typeof parsed.number === "number" ? Math.max(1, Math.min(9, Math.round(parsed.number))) : fallback.number,
-        color: VALID_COLORS.includes(rawColor) ? rawColor : "violet",
-        stone: VALID_STONES.includes(rawStone) ? rawStone : "sapphire",
+        color: VALID_COLORS.includes(rawColor) ? rawColor : fallback.color,
+        stone: VALID_STONES.includes(rawStone) ? rawStone : fallback.stone,
       };
     },
 
