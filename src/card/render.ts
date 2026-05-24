@@ -4,9 +4,11 @@ import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
+import QRCode from "qrcode";
 import { normalizeStone, type LuckyStone } from "./stones.ts";
 
 const HTML_DIR = path.resolve(import.meta.dir, "html");
+const LANDING_URL = "https://yearn-three.vercel.app/";
 const CARD_W = 380;
 const CARD_H = 600;
 const SCALE = 3; // 1140×1800 output
@@ -99,6 +101,36 @@ export async function closeRenderer(): Promise<void> {
 // Core screenshot helper
 // ---------------------------------------------------------------------------
 
+async function qrDataUrl(text: string, width: number): Promise<string> {
+  const url = (text || LANDING_URL).replace(/\/$/, "");
+  return QRCode.toDataURL(url, {
+    errorCorrectionLevel: "M",
+    margin: 2,
+    width,
+  });
+}
+
+/** Replace broken client-side canvas QR with a scannable PNG before screenshot. */
+async function injectShareQr(page: Page, shareUrl: string, cardType: string): Promise<void> {
+  const width = cardType === "social" ? 216 : 192;
+  const dataUrl = await qrDataUrl(shareUrl, width);
+  await page.evaluate(({ dataUrl }) => {
+    const fillSlot = (slot: Element | null) => {
+      if (!slot) return;
+      const img = document.createElement("img");
+      img.src = dataUrl;
+      img.className = slot.className || "card__footer-qr";
+      img.alt = "QR code";
+      slot.replaceWith(img);
+    };
+
+    fillSlot(document.querySelector(".card__footer .card__footer-qr"));
+    fillSlot(document.querySelector(".card__footer canvas"));
+    fillSlot(document.querySelector("#qr-slot"));
+    fillSlot(document.querySelector(".social-qr canvas")?.parentElement ?? null);
+  }, { dataUrl });
+}
+
 async function screenshotCard(params: URLSearchParams): Promise<Buffer> {
   const port = await getServer();
   const page = await getPage();
@@ -106,6 +138,10 @@ async function screenshotCard(params: URLSearchParams): Promise<Buffer> {
   const url = `http://127.0.0.1:${port}/index.html?${params.toString()}`;
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => (window as unknown as { __CARD_READY__: boolean }).__CARD_READY__ === true, { timeout: 15_000 });
+
+  const shareUrl = params.get("shareUrl");
+  const cardType = params.get("card") ?? "profile";
+  if (shareUrl) await injectShareQr(page, shareUrl, cardType);
 
   const card = await page.$(".card");
   if (!card) throw new Error("Card element not found in rendered page");

@@ -1,5 +1,4 @@
 import { resolveColor, DEFAULT_COLOR } from './palette.js';
-import { generateQR } from './vendor/qr.js';
 
 /**
  * FORTUNE_DATA shape — a single object drives all three card types.
@@ -54,7 +53,7 @@ const SAMPLE_DATA = {
     },
   },
   social: {
-    shareUrl: 'https://yearn.cards/share/teri',
+    shareUrl: 'https://yearn-three.vercel.app/',
   },
 };
 
@@ -78,18 +77,11 @@ function shareUrlFromData(data) {
 
 function renderQRFooter(shareUrl, footerEl) {
   if (!shareUrl || !footerEl) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 108;
-  canvas.height = 108;
-  canvas.className = 'card__footer-qr';
-  try {
-    generateQR(shareUrl, canvas, { quietZone: 1, fg: '#1A1A1A', bg: '#FFFFFF' });
-  } catch (e) {
-    console.warn('[qr] Failed to generate QR:', e.message);
-    return;
-  }
   footerEl.classList.add('card__footer--with-qr');
-  footerEl.appendChild(canvas);
+  const slot = document.createElement('div');
+  slot.className = 'card__footer-qr';
+  slot.dataset.shareUrl = shareUrl;
+  footerEl.appendChild(slot);
 }
 
 function meterHTML(label, filled, tier) {
@@ -196,6 +188,7 @@ function renderDaily(data, cardEl) {
 
 function renderSocial(data, cardEl) {
   const s = data?.social ?? {};
+  const shareUrl = shareUrlFromData(data);
   cardEl.classList.add('card--social');
 
   cardEl.querySelector('.card__header-title').textContent = '';
@@ -213,23 +206,11 @@ function renderSocial(data, cardEl) {
         <img src="assets/flowers/flower-group.svg" alt="">
       </div>
       <div class="social-bottom">
-        <div id="qr-slot" class="social-qr"></div>
+        <div id="qr-slot" class="social-qr" data-share-url="${safe(s?.shareUrl ?? data?.shareUrl)}"></div>
       </div>
     </div>`;
 
-  // Generate QR code into the slot
-  const shareUrl = s?.shareUrl;
-  const slot = body.querySelector('#qr-slot');
-  if (shareUrl && slot) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 216;   // 72px CSS × 3 for crispness
-    canvas.height = 216;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    slot.appendChild(canvas);
-    try { generateQR(shareUrl, canvas, { quietZone: 2, fg: '#1A1A1A', bg: '#FFFFFF' }); }
-    catch (e) { console.warn('[qr] Failed to generate QR:', e.message); }
-  }
+  // QR image injected server-side before Playwright screenshot (vendor qr.js is not scannable).
 
   const footer = cardEl.querySelector('.card__footer');
   footer.style.display = 'none';

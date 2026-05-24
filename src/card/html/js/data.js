@@ -128,7 +128,7 @@ const SAMPLE_DATA = {
     luck: { general: 3, relationship: 2, academic: 5, career: 5 },
   },
   social: {
-    shareUrl: 'https://yearn.cards/share/teri',
+    shareUrl: 'https://yearn-three.vercel.app/',
   },
 };
 
