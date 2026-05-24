@@ -91,6 +91,10 @@ export async function route(
       await sendDailyCardOnDemand(phone, user, deps);
       return;
     }
+    if (result.sideEffect === "send_social_card") {
+      await sendSocialCard(phone, user);
+      return;
+    }
     await sendText(phone, result.reply);
     return;
   }
@@ -309,6 +313,23 @@ async function generateProfileCardData(
     projection,
     statsVersion: PROFILE_STATS_VERSION,
   };
+}
+
+/** Handles /social — sends the shareable social card on demand. */
+async function sendSocialCard(phone: string, user: import("./db.ts").UserRow): Promise<void> {
+  const displayName = user.name ?? phone.slice(-4);
+  const caption = user.lang === "zh"
+    ? "你想要，你就得到 ✨ 分享给朋友吧！"
+    : "you yearn for it, you get it ✨ share with your friends!";
+  try {
+    const png = await renderSocialCard({ name: displayName, shareUrl: SHARE_URL });
+    await sendCard(phone, caption, png);
+  } catch (err) {
+    console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "sendSocialCard", phone: phone.slice(-4), err: String(err) }));
+    try {
+      await sendText(phone, user.lang === "zh" ? "生成分享卡时出了点问题，稍后再试吧 😅" : "the stars fumbled that one 😅 try again in a sec!");
+    } catch { /* best-effort */ }
+  }
 }
 
 /** Handles /daily — sends the daily reading card on demand. */

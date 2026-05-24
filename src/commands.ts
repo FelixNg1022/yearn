@@ -5,7 +5,7 @@ import { STRINGS } from "./lang.ts";
 
 export interface CommandResult {
   reply: string;
-  sideEffect?: "set_delete_pending" | "render_profile_card" | "send_daily_card";
+  sideEffect?: "set_delete_pending" | "render_profile_card" | "send_daily_card" | "send_social_card";
 }
 
 export async function handleCommand(
@@ -46,6 +46,9 @@ export async function handleCommand(
     case "/daily":
       return { reply: "__SEND_DAILY_CARD__", sideEffect: "send_daily_card" };
 
+    case "/social":
+      return { reply: "__SEND_SOCIAL_CARD__", sideEffect: "send_social_card" };
+
     case "/setup":
       await db.setOnboardingState(user.phone, "pending_name");
       return { reply: STRINGS.askName[lang] };
@@ -66,6 +69,7 @@ function help(lang: Lang): string {
       "/help        这条帮助",
       "/profile     查看你的个人卦盘",
       "/daily       重新发送今日运势卡",
+      "/social      获取可分享的运势卡",
       "/history     最近 5 次卦",
       "/stats       总次数 + 应验率",
       "/methods     三种方法简介",
@@ -82,6 +86,7 @@ function help(lang: Lang): string {
     "/help        this message",
     "/profile     view your profile card",
     "/daily       resend today's daily reading card",
+    "/social      get a shareable card to send friends",
     "/history     last 5 readings",
     "/stats       total count + hit rate",
     "/methods     short intro to each method",
