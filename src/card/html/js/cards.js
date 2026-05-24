@@ -33,6 +33,7 @@ import { generateQR } from './vendor/qr.js';
 /** Hardcoded sample data for visual testing. */
 const SAMPLE_DATA = {
   name: 'Teri Shim',
+  shareUrl: 'https://yearn-three.vercel.app/',
   profile: {
     luckyNumber: 12,
     luckyColor: 'orange',
@@ -70,6 +71,26 @@ const formatStoneName = (id) =>
 const clampScore = (n) => Math.max(0, Math.min(5, Number(n) || 0));
 
 const CALENDAR_SVG = `<img src="assets/icons/calendar.svg" alt="" class="daily-cal-icon">`;
+
+function shareUrlFromData(data) {
+  return data?.shareUrl || data?.social?.shareUrl || null;
+}
+
+function renderQRFooter(shareUrl, footerEl) {
+  if (!shareUrl || !footerEl) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = 108;
+  canvas.height = 108;
+  canvas.className = 'card__footer-qr';
+  try {
+    generateQR(shareUrl, canvas, { quietZone: 1, fg: '#1A1A1A', bg: '#FFFFFF' });
+  } catch (e) {
+    console.warn('[qr] Failed to generate QR:', e.message);
+    return;
+  }
+  footerEl.classList.add('card__footer--with-qr');
+  footerEl.appendChild(canvas);
+}
 
 function meterHTML(label, filled, tier) {
   const n = clampScore(filled);
@@ -134,7 +155,9 @@ function renderProfile(data, cardEl) {
       <p class="profile-projection__text">${safe(p.projection)}</p>
     </div>`;
 
-  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
+  const footer = cardEl.querySelector('.card__footer');
+  footer.textContent = `prepared for ${name}`;
+  renderQRFooter(shareUrlFromData(data), footer);
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +185,9 @@ function renderDaily(data, cardEl) {
       ${meterHTML('Career Luck', luck.career, 'secondary')}
     </div>`;
 
-  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
+  const footer = cardEl.querySelector('.card__footer');
+  footer.textContent = `prepared for ${name}`;
+  renderQRFooter(shareUrlFromData(data), footer);
 }
 
 // ---------------------------------------------------------------------------

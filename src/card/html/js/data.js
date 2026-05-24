@@ -113,6 +113,7 @@ function resolveStone(input) {
 // Sample data shown when no query params are provided
 const SAMPLE_DATA = {
   name: 'Teri Shim',
+  shareUrl: 'https://yearn-three.vercel.app/',
   profile: {
     luckyNumber: 12,
     luckyColor: 'orange',
@@ -151,6 +152,7 @@ function loadFromQueryParams() {
 
   const data = {
     name: p.get('name') || undefined,
+    shareUrl: p.get('shareUrl') || undefined,
     profile: {
       luckyNumber: toInt(p.get('luckyNumber')),
       luckyColor: luckyColorName,
