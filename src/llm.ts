@@ -42,12 +42,15 @@ export interface DailyScores {
 }
 
 export type LuckyColorName = "orange" | "marigold" | "rose" | "magenta" | "violet" | "azure" | "teal" | "lime";
-export type LuckyStone = "emerald" | "ruby" | "sapphire";
+
+import { normalizeStone, VALID_STONES, type LuckyStone } from "./card/stones.ts";
 
 export interface LuckyAttributes {
   number: number;       // 1-9
   color: LuckyColorName;
   stone: LuckyStone;
+  millionaireChance: number; // 0-100
+  meetLoveAge: number;       // 18-99
 }
 
 export interface LlmClient {
@@ -186,7 +189,6 @@ Output JSON only. No code fences. No commentary.`,
 
     async getLuckyAttributes(bazi, lang) {
       const VALID_COLORS = ["orange", "marigold", "rose", "magenta", "violet", "azure", "teal", "lime"] as const;
-      const VALID_STONES = ["emerald", "ruby", "sapphire"] as const;
 
       // Deterministic fallback derived from bazi so each user gets unique values.
       const baziStr = JSON.stringify(bazi);
@@ -196,26 +198,35 @@ Output JSON only. No code fences. No commentary.`,
         number: (h % 9) + 1,
         color: VALID_COLORS[h % VALID_COLORS.length]!,
         stone: VALID_STONES[h % VALID_STONES.length]!,
+        millionaireChance: 40 + (h % 51),
+        meetLoveAge: 22 + (h % 18),
       };
 
       const text = await chat(
-        `Given a user's 八字 pillars, derive their lucky attributes based on their day master element and favorable elements.
+        `Given a user's 八字 pillars, derive their lucky attributes and two playful profile stats based on their day master element and favorable elements.
 Color must be one of exactly: orange, marigold, rose, magenta, violet, azure, teal, lime.
-Stone must be one of exactly: emerald, ruby, sapphire.
+Stone must be one of exactly: ${VALID_STONES.join(", ")}.
+millionaireChance: integer 0-100 — cheeky % chance they'll become a millionaire (stay believable, usually 35-92).
+meetLoveAge: integer 18-45 — age they'll meet their love (playful, not creepy; keep within a plausible window).
 Output strict JSON only:
-{"number":<1-9>,"color":"<one of the 8 color names>","stone":"<emerald|ruby|sapphire>"}
+{"number":<1-9>,"color":"<one of the 8 color names>","stone":"<one of the 12 stone names>","millionaireChance":<0-100>,"meetLoveAge":<18-45>}
 Output JSON only. No code fences. No commentary.`,
         `八字: ${JSON.stringify(bazi)}\nLang: ${lang}\n\nReturn JSON.`,
-        60,
+        80,
       );
       const parsed = parseJson<Record<string, unknown>>(text);
       if (!parsed) return fallback;
       const rawColor = (typeof parsed.color === "string" ? parsed.color.toLowerCase() : "") as typeof VALID_COLORS[number];
-      const rawStone = (typeof parsed.stone === "string" ? parsed.stone.toLowerCase() : "") as typeof VALID_STONES[number];
+      const clampPct = (v: unknown, fb: number) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(100, Math.round(v))) : fb;
+      const clampAge = (v: unknown, fb: number) =>
+        typeof v === "number" && Number.isFinite(v) ? Math.max(18, Math.min(45, Math.round(v))) : fb;
       return {
         number: typeof parsed.number === "number" ? Math.max(1, Math.min(9, Math.round(parsed.number))) : fallback.number,
         color: VALID_COLORS.includes(rawColor) ? rawColor : fallback.color,
-        stone: VALID_STONES.includes(rawStone) ? rawStone : fallback.stone,
+        stone: normalizeStone(typeof parsed.stone === "string" ? parsed.stone : undefined),
+        millionaireChance: clampPct(parsed.millionaireChance, fallback.millionaireChance),
+        meetLoveAge: clampAge(parsed.meetLoveAge, fallback.meetLoveAge),
       };
     },
 

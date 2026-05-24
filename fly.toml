@@ -5,6 +5,7 @@ primary_region = "sea"
 
 [env]
   NODE_ENV = "production"
+  PLAYWRIGHT_BROWSERS_PATH = "/root/.cache/ms-playwright"
 
 [http_service]
   # No public HTTP — Spectrum connects outbound via gRPC

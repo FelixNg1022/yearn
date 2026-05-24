@@ -5,7 +5,7 @@ nixPkgs = ["bun", "chromium", "nss", "nspr", "at-spi2-atk", "cups", "libdrm", "d
 cmds = ["bun install --frozen-lockfile"]
 
 [phases.build]
-cmds = ["bunx playwright install chromium --with-deps || true"]
+cmds = ["bunx playwright install chromium --with-deps"]
 
 [start]
 cmd = "bun run src/index.ts"

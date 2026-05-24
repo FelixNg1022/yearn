@@ -1,0 +1,6 @@
+<!-- Rose Quartz — soft heart-shaped stone -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <path d="M60 100 C60 100, 16 68, 16 44 C16 28, 28 16, 42 16 C50 16, 56 20, 60 28 C64 20, 70 16, 78 16 C92 16, 104 28, 104 44 C104 68, 60 100, 60 100Z" fill="rgba(255,255,255,0.82)"/>
+  <path d="M60 28 C56 20, 50 16, 42 16 C28 16, 16 28, 16 44 C16 52, 22 62, 34 74" fill="rgba(255,255,255,0.95)"/>
+  <ellipse cx="40" cy="38" rx="8" ry="6" fill="rgba(255,255,255,0.5)" transform="rotate(-30 40 38)"/>
+</svg>

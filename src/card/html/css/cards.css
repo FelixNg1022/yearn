@@ -16,6 +16,72 @@
   flex-direction: column;
   font-family: var(--font-body);
   color: var(--color-ink);
+  /* Parallax tilt — set by JS via --rx / --ry / --mx / --my */
+  transform: perspective(800px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  will-change: transform;
+}
+
+.card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+/* Holographic shine — diagonal lines with chromatic split, follows cursor */
+.card__shine {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  overflow: hidden;
+}
+
+.card:hover .card__shine {
+  opacity: 1;
+}
+
+/* Diagonal line pattern — repeating stripes at 135deg */
+.card__shine::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255,255,255,0.06) 3px,
+    rgba(255,255,255,0.06) 4px
+  );
+}
+
+/* Chromatic rainbow sweep — moves with cursor */
+.card__shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    /* Spotlight glow */
+    radial-gradient(
+      ellipse 60% 80% at var(--mx, 50%) var(--my, 50%),
+      rgba(255,255,255,0.25) 0%,
+      transparent 70%
+    ),
+    /* Chromatic bands — offset rainbow stripes that shift with cursor */
+    linear-gradient(
+      135deg,
+      transparent calc(var(--my, 50%) - 40%),
+      rgba(255, 60, 60, 0.12)  calc(var(--my, 50%) - 30%),
+      rgba(255, 180, 0, 0.10)  calc(var(--my, 50%) - 20%),
+      rgba(255, 255, 80, 0.10) calc(var(--my, 50%) - 10%),
+      rgba(80, 255, 120, 0.10) var(--my, 50%),
+      rgba(80, 180, 255, 0.12) calc(var(--my, 50%) + 10%),
+      rgba(140, 80, 255, 0.12) calc(var(--my, 50%) + 20%),
+      rgba(255, 60, 200, 0.10) calc(var(--my, 50%) + 30%),
+      transparent calc(var(--my, 50%) + 40%)
+    );
+  mix-blend-mode: overlay;
 }
 
 /* ---- Header band ---- */
@@ -126,15 +192,13 @@
   object-fit: contain;
 }
 
-.profile-block__stone-fallback {
+.profile-block__stone-name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: var(--text-base);
-  color: var(--color-on-brand);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
   text-transform: lowercase;
+  margin-top: 2px;
 }
 
 .profile-item__label {
@@ -142,6 +206,41 @@
   font-weight: 600;
   font-size: 15px;
   color: var(--card-color);
+  text-transform: lowercase;
+}
+
+.profile-stats {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.profile-stat {
+  flex: 1;
+  background: var(--card-color);
+  border-radius: var(--radius-block);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.profile-stat__value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-2xl);
+  line-height: 1.2;
+  color: var(--color-on-brand);
+}
+
+.profile-stat__label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.75);
   text-transform: lowercase;
 }
 

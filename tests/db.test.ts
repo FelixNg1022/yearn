@@ -189,4 +189,65 @@ describe("db", () => {
     expect(user?.pending_date_json).toBeNull();
     expect(user?.pending_time_json).toBeNull();
   });
+
+  test("getMostRecentPendingOutcome matches after follow-up even when reading is older than 48h", async () => {
+    const now = Date.now();
+    const phone = "+11234567891";
+    await db.upsertUser({
+      phone,
+      lang: "en",
+      onboarding_state: "complete",
+      created_at: now,
+      last_seen_at: now,
+      readings_today: 0,
+      readings_today_reset_at: now,
+    });
+    const readingId = await db.recordReading({
+      phone,
+      question: "will i get the job?",
+      method: "meihua",
+      cast_json: "{}",
+      interpretation: "maybe",
+      lang: "en",
+      created_at: now - 6 * 86400_000,
+      follow_up_at: now - 86400_000,
+      predicted_horizon_days: 5,
+      question_type: "general",
+      predicted_probability: null,
+    });
+    await db.markFollowedUp(readingId);
+
+    const pending = await db.getMostRecentPendingOutcome(phone, 14 * 86400_000);
+    expect(pending?.id).toBe(readingId);
+  });
+
+  test("getMostRecentPendingOutcome ignores readings before follow-up was sent", async () => {
+    const now = Date.now();
+    const phone = "+11234567892";
+    await db.upsertUser({
+      phone,
+      lang: "en",
+      onboarding_state: "complete",
+      created_at: now,
+      last_seen_at: now,
+      readings_today: 0,
+      readings_today_reset_at: now,
+    });
+    await db.recordReading({
+      phone,
+      question: "will it rain?",
+      method: "meihua",
+      cast_json: "{}",
+      interpretation: "no",
+      lang: "en",
+      created_at: now,
+      follow_up_at: now + 86400_000,
+      predicted_horizon_days: null,
+      question_type: "general",
+      predicted_probability: null,
+    });
+
+    const pending = await db.getMostRecentPendingOutcome(phone, 14 * 86400_000);
+    expect(pending).toBeNull();
+  });
 });

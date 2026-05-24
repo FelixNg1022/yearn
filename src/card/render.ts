@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
 import { execSync } from "node:child_process";
+import { normalizeStone, type LuckyStone } from "./stones.ts";
 
 const HTML_DIR = path.resolve(import.meta.dir, "html");
 const CARD_W = 380;
@@ -121,18 +122,23 @@ export interface ProfileRenderInput {
   name: string;
   luckyNumber: number;
   luckyColor: string; // palette name: orange | marigold | rose | magenta | violet | azure | teal | lime
-  luckyStone: "emerald" | "ruby" | "sapphire";
+  luckyStone: LuckyStone | string;
+  millionaireChance: number;
+  meetLoveAge: number;
   projection: string; // broad fortune reading text
   shareUrl?: string;
 }
 
 export async function renderProfileCard(input: ProfileRenderInput): Promise<Buffer> {
+  const stone = normalizeStone(input.luckyStone);
   const p = new URLSearchParams({
     card: "profile",
     name: input.name,
     luckyNumber: String(input.luckyNumber),
     luckyColor: input.luckyColor,
-    luckyStone: input.luckyStone,
+    luckyStone: stone,
+    millionaireChance: String(input.millionaireChance),
+    meetLoveAge: String(input.meetLoveAge),
     projection: input.projection,
   });
   if (input.shareUrl) p.set("shareUrl", input.shareUrl);

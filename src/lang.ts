@@ -62,6 +62,22 @@ export const STRINGS = {
     en: "hey!! welcome to yearn ✨ your personal fortune bestie. what's your name?",
     zh: "嗨！欢迎来到 yearn ✨ 你的专属运势小助手。你叫什么名字？",
   },
+  askNameFromLanding: {
+    en: "hey!! you made it from the landing page ✨ let's build your fortune profile — what's your name?",
+    zh: "嗨！从主页来的 ✨ 我们来建立你的运势档案——你叫什么名字？",
+  },
+  profileBrewing: {
+    en: "brewing your profile card ✨ i'll send it your way when it's ready!",
+    zh: "卦盘正在生成中 ✨ 好了马上发给你！",
+  },
+  shareNoOutcome: {
+    en: "no verified wins to share yet ✨ ask the universe something first, then reply yes when it hits!",
+    zh: "还没有可分享的应验结果 ✨ 先问宇宙一个问题，应验了回 yes 就能分享啦！",
+  },
+  specificQuestionNote: {
+    en: "\n\n(ps — specific yes/no questions get a probability read. general vibes get a full fortune card ✨)",
+    zh: "\n\n（小提示：具体 yes/no 问题会给概率解读；开放式问题会收到完整运势卡 ✨）",
+  },
   welcome: {
     en: "love that!! now drop your birthday so i can read your 八字 (e.g. Apr 7, 2004 or 2004-04-07)",
     zh: "好名字！告诉我你的生日，我来算你的八字（如：2004年4月7日 或 2004-04-07）",

@@ -9,7 +9,9 @@ import { generateQR } from './vendor/qr.js';
  *   profile: {
  *     luckyNumber:  number,              — displayed large in the number block
  *     luckyColor:   string,              — palette name or hex
- *     luckyStone:   string,              — "emerald" | "ruby" | "sapphire"
+ *     luckyStone:   string,              — one of the 12 stone ids (e.g. jade, amethyst)
+ *     millionaireChance: number,         — percentage chance (0-100)
+ *     meetLoveAge:  number,              — age when you meet your love
  *     projection:   string,              — the broad reading paragraph
  *   },
  *   daily: {
@@ -34,7 +36,9 @@ const SAMPLE_DATA = {
   profile: {
     luckyNumber: 12,
     luckyColor: 'orange',
-    luckyStone: 'emerald',
+    luckyStone: 'jade',
+    millionaireChance: 73,
+    meetLoveAge: 27,
     projection:
       'you will be struck with wanderlust and spend your life exploring...',
   },
@@ -59,26 +63,13 @@ const SAMPLE_DATA = {
 
 const safe = (val) => (val != null && val !== '' ? val : '\u2014');
 
+/** Display stone id as readable label (e.g. clear-quartz → clear quartz). */
+const formatStoneName = (id) =>
+  safe(id).replace(/-/g, ' ');
+
 const clampScore = (n) => Math.max(0, Math.min(5, Number(n) || 0));
 
 const CALENDAR_SVG = `<img src="assets/icons/calendar.svg" alt="" class="daily-cal-icon">`;
-
-function renderQRFooter(shareUrl, footerEl) {
-  if (!shareUrl || !footerEl) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 108;
-  canvas.height = 108;
-  canvas.style.width = '36px';
-  canvas.style.height = '36px';
-  canvas.style.flexShrink = '0';
-  canvas.style.borderRadius = '4px';
-  try { generateQR(shareUrl, canvas, { quietZone: 1, fg: '#1A1A1A', bg: '#FFFFFF' }); }
-  catch (e) { return; }
-  footerEl.style.display = 'flex';
-  footerEl.style.alignItems = 'center';
-  footerEl.style.justifyContent = 'space-between';
-  footerEl.appendChild(canvas);
-}
 
 function meterHTML(label, filled, tier) {
   const n = clampScore(filled);
@@ -117,15 +108,25 @@ function renderProfile(data, cardEl) {
         <div class="profile-block">
           <div class="profile-block__stone" id="stone-slot">
             <img
-              src="assets/stones/${encodeURIComponent(p.luckyStone || 'emerald')}.svg"
-              alt="${safe(p.luckyStone)}"
+              src="assets/stones/${encodeURIComponent(p.luckyStone || 'jade')}.svg"
+              alt="${formatStoneName(p.luckyStone)}"
               class="profile-block__stone-img"
-              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+              onerror="if(this.dataset.fallback!=='1'){this.dataset.fallback='1';this.src='assets/stones/jade.svg';}else{this.style.display='none';}"
             >
-            <span class="profile-block__stone-fallback" style="display:none">${safe(p.luckyStone)}</span>
           </div>
+          <span class="profile-block__stone-name">${formatStoneName(p.luckyStone)}</span>
         </div>
         <span class="profile-item__label">lucky rock</span>
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div class="profile-stat">
+        <span class="profile-stat__value">${safe(p.millionaireChance)}%</span>
+        <span class="profile-stat__label">to become a millionaire</span>
+      </div>
+      <div class="profile-stat">
+        <span class="profile-stat__value">at ${safe(p.meetLoveAge)}</span>
+        <span class="profile-stat__label">you will meet your love</span>
       </div>
     </div>
     <div class="profile-projection">
@@ -133,9 +134,7 @@ function renderProfile(data, cardEl) {
       <p class="profile-projection__text">${safe(p.projection)}</p>
     </div>`;
 
-  const footer = cardEl.querySelector('.card__footer');
-  footer.textContent = `prepared for ${name}`;
-  if (data.shareUrl) renderQRFooter(data.shareUrl, footer);
+  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,9 +162,7 @@ function renderDaily(data, cardEl) {
       ${meterHTML('Career Luck', luck.career, 'secondary')}
     </div>`;
 
-  const dailyFooter = cardEl.querySelector('.card__footer');
-  dailyFooter.textContent = `prepared for ${name}`;
-  if (data.shareUrl) renderQRFooter(data.shareUrl, dailyFooter);
+  cardEl.querySelector('.card__footer').textContent = `prepared for ${name}`;
 }
 
 // ---------------------------------------------------------------------------

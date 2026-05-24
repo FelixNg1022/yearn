@@ -1,0 +1,10 @@
+<!-- Lapis Lazuli — irregular polished slab with gold flecks -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <polygon points="35,18 85,14 100,45 95,90 65,108 25,95 15,55" fill="rgba(255,255,255,0.78)"/>
+  <polygon points="35,18 85,14 70,50 15,55" fill="rgba(255,255,255,0.92)"/>
+  <circle cx="55" cy="42" r="2.5" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="72" cy="65" r="2" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="45" cy="78" r="2" fill="rgba(255,255,255,0.45)"/>
+  <circle cx="80" cy="48" r="1.8" fill="rgba(255,255,255,0.4)"/>
+  <circle cx="38" cy="58" r="1.5" fill="rgba(255,255,255,0.4)"/>
+</svg>

@@ -5,7 +5,11 @@ import { resolveColor, DEFAULT_COLOR, LUCKY_PALETTE } from './palette.js';
 // ---------------------------------------------------------------------------
 
 const VALID_CARDS = ['profile', 'daily', 'social'];
-const VALID_STONES = ['emerald', 'ruby', 'sapphire'];
+const VALID_STONES = [
+  'jade', 'clear-quartz', 'amethyst', 'rose-quartz', 'black-obsidian',
+  'tiger-eye', 'citrine', 'red-agate', 'lapis-lazuli', 'moonstone',
+  'green-phantom', 'red-coral',
+];
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -83,13 +87,15 @@ function toLuckScore(val) {
   return Math.max(0, Math.min(5, n));
 }
 
-/** Validate and resolve a stone name. Falls back to emerald with a warning. */
+/** Validate and resolve a stone name. Falls back to jade with a warning. */
 function resolveStone(input) {
   if (!input) return undefined;
-  const lower = input.trim().toLowerCase();
+  const lower = input.trim().toLowerCase().replace(/\s+/g, '-');
+  const legacy = { emerald: 'jade', ruby: 'red-agate', sapphire: 'lapis-lazuli' };
+  if (legacy[lower]) return legacy[lower];
   if (VALID_STONES.includes(lower)) return lower;
-  console.warn(`[data] Unrecognised stone "${input}" — falling back to "emerald"`);
-  return 'emerald';
+  console.warn(`[data] Unrecognised stone "${input}" — falling back to "jade"`);
+  return 'jade';
 }
 
 // ---------------------------------------------------------------------------
@@ -104,25 +110,53 @@ function resolveStone(input) {
  *   &luckyStone=emerald&projection=...&date=...&avoid=...
  *   &general=3&relationship=2&academic=5&career=4&shareUrl=...
  */
+// Sample data shown when no query params are provided
+const SAMPLE_DATA = {
+  name: 'Teri Shim',
+  profile: {
+    luckyNumber: 12,
+    luckyColor: 'orange',
+    luckyStone: 'jade',
+    millionaireChance: 73,
+    meetLoveAge: 27,
+    projection: 'you will be struck with wanderlust and spend your life exploring...',
+  },
+  daily: {
+    date: 'may 24, 2026',
+    avoid: 'red shoes',
+    luck: { general: 3, relationship: 2, academic: 5, career: 5 },
+  },
+  social: {
+    shareUrl: 'https://yearn.cards/share/teri',
+  },
+};
+
 function loadFromQueryParams() {
   const p = new URLSearchParams(window.location.search);
+
+  // If no meaningful params provided, use sample data
+  const hasParams = [...p.keys()].some(k => k !== 'card');
+  if (!hasParams) {
+    const card = VALID_CARDS.includes(p.get('card')) ? p.get('card') : 'profile';
+    return { card, data: SAMPLE_DATA };
+  }
 
   const card = VALID_CARDS.includes(p.get('card')) ? p.get('card') : 'profile';
 
   const luckyColorRaw = p.get('luckyColor') || undefined;
   const luckyColor = luckyColorRaw ? resolveColor(luckyColorRaw) : undefined;
-  // Also store the resolved name for downstream consumers
   const luckyColorName = luckyColorRaw
     ? Object.entries(LUCKY_PALETTE).find(([, hex]) => hex === luckyColor)?.[0] ?? luckyColorRaw
     : undefined;
 
   const data = {
     name: p.get('name') || undefined,
-    shareUrl: p.get('shareUrl') || undefined,
     profile: {
       luckyNumber: toInt(p.get('luckyNumber')),
       luckyColor: luckyColorName,
       luckyStone: resolveStone(p.get('luckyStone')),
+      millionaireChance: toInt(p.get('millionaireChance')),
+      meetLoveAge: toInt(p.get('meetLoveAge')),
       projection: p.get('projection') || undefined,
     },
     daily: {

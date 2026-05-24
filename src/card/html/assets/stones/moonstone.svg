@@ -1,0 +1,6 @@
+<!-- Moonstone — oval cabochon with crescent sheen -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <ellipse cx="60" cy="60" rx="40" ry="36" fill="rgba(255,255,255,0.75)"/>
+  <path d="M40 36 Q60 28 80 36 Q70 60 60 80 Q50 60 40 36Z" fill="rgba(255,255,255,0.95)"/>
+  <ellipse cx="55" cy="46" rx="12" ry="8" fill="rgba(255,255,255,0.5)" transform="rotate(-10 55 46)"/>
+</svg>

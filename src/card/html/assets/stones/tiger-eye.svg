@@ -1,0 +1,7 @@
+<!-- Tiger Eye — oval cabochon with cat-eye band -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <ellipse cx="60" cy="60" rx="40" ry="34" fill="rgba(255,255,255,0.78)"/>
+  <ellipse cx="60" cy="60" rx="40" ry="8" fill="rgba(255,255,255,0.95)"/>
+  <ellipse cx="60" cy="60" rx="14" ry="34" fill="rgba(255,255,255,0.4)"/>
+  <ellipse cx="54" cy="50" rx="8" ry="5" fill="rgba(255,255,255,0.45)" transform="rotate(-15 54 50)"/>
+</svg>

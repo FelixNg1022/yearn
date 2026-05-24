@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.50.0-jammy
+FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 # Install Bun (unzip required by the Bun installer)
 RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*

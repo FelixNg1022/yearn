@@ -12,7 +12,9 @@ describe("renderProfileCard", () => {
       name: "Teri Shim",
       luckyNumber: 7,
       luckyColor: "violet",
-      luckyStone: "sapphire",
+      luckyStone: "jade",
+      millionaireChance: 73,
+      meetLoveAge: 27,
       projection: "a season of bold moves pays off — trust the momentum.",
     });
     expect(png).toBeInstanceOf(Buffer);

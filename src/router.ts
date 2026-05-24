@@ -10,8 +10,10 @@ import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./c
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
-const OUTCOME_WINDOW_MS = 48 * 60 * 60 * 1000;
 const SHARE_URL = "https://yearn-three.vercel.app/";
+
+/** Accept outcome replies for up to 14 days after follow-up was sent. */
+const OUTCOME_RESPONSE_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 const GREETING_PATTERNS = /^(hi|hey|hello|hiya|sup|yo|hii|hiii|hi yearn|hey yearn|hello yearn|start|begin|go|👋|🙋|🙋‍♀️|🙋‍♂️)[\s!.]*$/i;
 
@@ -43,7 +45,8 @@ export async function route(
       readings_today_reset_at: now,
     });
     user = (await db.getUser(phone))!;
-    await sendText(phone, STRINGS.askName[lang]);
+    const fromLanding = GREETING_PATTERNS.test(trimmed);
+    await sendText(phone, fromLanding ? STRINGS.askNameFromLanding[lang] : STRINGS.askName[lang]);
     return;
   }
 
@@ -85,7 +88,7 @@ export async function route(
     await sendText(phone, reply);
     const refreshedUser = await db.getUser(phone);
     if (refreshedUser && refreshedUser.onboarding_state === "complete") {
-      // Fire-and-forget: generate profile card data + send card, then arm daily scheduler
+      await sendText(phone, STRINGS.profileBrewing[refreshedUser.lang]);
       void prepareAndSendProfileCard(phone, refreshedUser, deps);
     }
     return;
@@ -101,12 +104,14 @@ export async function route(
       });
       await sendCard(phone, "the universe called it 🎯 here's your card", png);
       await db.markShared(yesOutcome.reading_id);
+    } else {
+      await sendText(phone, STRINGS.shareNoOutcome[user.lang]);
     }
     return;
   }
 
   if (looksLikeOutcome(trimmed)) {
-    const pending = await db.getMostRecentPendingOutcome(phone, OUTCOME_WINDOW_MS);
+    const pending = await db.getMostRecentPendingOutcome(phone, OUTCOME_RESPONSE_WINDOW_MS);
     if (pending) {
       const parsed = parseOutcome(trimmed);
       if (parsed) {
@@ -148,8 +153,7 @@ export async function route(
   });
 
   if (result.question_type === "specific") {
-    // Text-only reply for specific probability questions — no card.
-    await sendText(phone, result.reply);
+    await sendText(phone, result.reply + STRINGS.specificQuestionNote[user.lang]);
     return;
   }
 
@@ -184,9 +188,7 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
   }
 
   // Ack immediately so the user isn't left in silence
-  await sendText(phone, user.lang === "zh"
-    ? "卦盘正在生成中 ✨ 好了马上发给你！"
-    : "brewing your profile card ✨ i'll send it your way when it's ready!");
+  await sendText(phone, STRINGS.profileBrewing[user.lang]);
 
   // Generate + send in background — caller doesn't need to await
   void (async () => {
@@ -202,13 +204,15 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
         luckyNumber: data.luckyNumber,
         luckyColor: data.luckyColor,
         luckyStone: data.luckyStone,
+        millionaireChance: data.millionaireChance,
+        meetLoveAge: data.meetLoveAge,
         projection: data.projection,
         shareUrl: SHARE_URL,
       });
 
       const caption = user.lang === "zh"
-        ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
-        : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
+        ? `${data.millionaireChance}% 成为百万富翁 · ${data.meetLoveAge} 岁遇见真爱 ✨`
+        : `${data.millionaireChance}% chance you're a future millionaire · love hits at ${data.meetLoveAge} ✨`;
       await sendCard(phone, caption, png);
     } catch (err) {
       console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "sendProfileCard", phone: phone.slice(-4), err: String(err) }));
@@ -242,13 +246,15 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
       luckyNumber: data.luckyNumber,
       luckyColor: data.luckyColor,
       luckyStone: data.luckyStone,
+      millionaireChance: data.millionaireChance,
+      meetLoveAge: data.meetLoveAge,
       projection: data.projection,
       shareUrl: SHARE_URL,
     });
 
     const caption = user.lang === "zh"
-      ? `幸运数字 ${data.luckyNumber} · 幸运色 ${data.luckyColor} · 幸运石 ${data.luckyStone}`
-      : `lucky number ${data.luckyNumber} · lucky color ${data.luckyColor} · lucky stone ${data.luckyStone}`;
+      ? `${data.millionaireChance}% 成为百万富翁 · ${data.meetLoveAge} 岁遇见真爱 ✨`
+      : `${data.millionaireChance}% chance you're a future millionaire · love hits at ${data.meetLoveAge} ✨`;
     await sendCard(phone, caption, png);
   } catch (err) {
     console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "prepareProfileCard", phone: phone.slice(-4), err: String(err) }));
@@ -289,6 +295,8 @@ async function generateProfileCardData(user: import("./db.ts").UserRow, deps: Ro
     luckyNumber: luckyAttrs.number,
     luckyColor: luckyAttrs.color,
     luckyStone: luckyAttrs.stone,
+    millionaireChance: luckyAttrs.millionaireChance,
+    meetLoveAge: luckyAttrs.meetLoveAge,
     projection: trimmedProjection,
   };
 }

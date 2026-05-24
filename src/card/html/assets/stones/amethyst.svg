@@ -1,0 +1,9 @@
+<!-- Amethyst — cluster of crystal points -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <polygon points="60,6 72,50 60,110 48,50" fill="rgba(255,255,255,0.85)"/>
+  <polygon points="38,22 50,58 38,105 28,58" fill="rgba(255,255,255,0.75)"/>
+  <polygon points="82,22 92,58 82,105 70,58" fill="rgba(255,255,255,0.75)"/>
+  <polygon points="60,6 72,50 60,50" fill="rgba(255,255,255,0.95)"/>
+  <polygon points="38,22 50,58 38,58" fill="rgba(255,255,255,0.9)"/>
+  <polygon points="82,22 92,58 82,58" fill="rgba(255,255,255,0.9)"/>
+</svg>

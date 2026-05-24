@@ -7,10 +7,16 @@ export type Lang = "en" | "zh";
 export type OnboardingState = "pending_name" | "pending_date" | "pending_time" | "pending_location" | "complete";
 export type Method = "meihua" | "liuren";
 
+import { type LuckyStone } from "./card/stones.ts";
+
+export type { LuckyStone };
+
 export interface ProfileCardData {
   luckyNumber: number;
   luckyColor: string;
-  luckyStone: "emerald" | "ruby" | "sapphire";
+  luckyStone: LuckyStone;
+  millionaireChance: number;
+  meetLoveAge: number;
   projection: string;
 }
 
@@ -114,7 +120,8 @@ export interface Db {
   getRecentReadings(phone: string, limit: number): Promise<ReadingRow[]>;
   getPendingFollowUps(now: number): Promise<ReadingRow[]>;
   markFollowedUp(readingId: string): Promise<void>;
-  getMostRecentPendingOutcome(phone: string, withinMs: number): Promise<ReadingRow | null>;
+  /** Most recent reading awaiting an outcome reply after follow-up was sent. */
+  getMostRecentPendingOutcome(phone: string, responseWindowMs: number): Promise<ReadingRow | null>;
   recordOutcome(o: OutcomeRow): Promise<void>;
   getMostRecentYesOutcome(phone: string): Promise<(OutcomeRow & { question: string }) | null>;
   markShared(readingId: string): Promise<void>;
@@ -409,14 +416,16 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
       await client.execute({ sql: "UPDATE readings SET followed_up = 1 WHERE id = ?", args: [readingId] });
     },
 
-    async getMostRecentPendingOutcome(phone, withinMs) {
-      const cutoff = Date.now() - withinMs;
+    async getMostRecentPendingOutcome(phone, responseWindowMs) {
+      const now = Date.now();
+      const oldestFollowUp = now - responseWindowMs;
       const r = await client.execute({
         sql: `SELECT r.* FROM readings r
               LEFT JOIN outcomes o ON o.reading_id = r.id
-              WHERE r.phone = ? AND r.followed_up = 1 AND o.reading_id IS NULL AND r.created_at > ?
-              ORDER BY r.created_at DESC LIMIT 1`,
-        args: [phone, cutoff],
+              WHERE r.phone = ? AND r.followed_up = 1 AND o.reading_id IS NULL
+                AND r.follow_up_at <= ? AND r.follow_up_at > ?
+              ORDER BY r.follow_up_at DESC LIMIT 1`,
+        args: [phone, now, oldestFollowUp],
       });
       return r.rows[0] ? toReading(r.rows[0]) : null;
     },

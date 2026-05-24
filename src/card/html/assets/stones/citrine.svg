@@ -1,0 +1,8 @@
+<!-- Citrine — faceted teardrop gem -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <polygon points="60,10 88,42 82,88 60,110 38,88 32,42" fill="rgba(255,255,255,0.8)"/>
+  <polygon points="60,10 88,42 60,52 32,42" fill="rgba(255,255,255,0.95)"/>
+  <polygon points="60,52 88,42 82,88 60,110" fill="rgba(255,255,255,0.85)"/>
+  <polygon points="60,52 32,42 38,88 60,110" fill="rgba(255,255,255,0.7)"/>
+  <line x1="60" y1="52" x2="60" y2="110" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/>
+</svg>

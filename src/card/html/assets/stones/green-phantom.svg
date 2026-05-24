@@ -1,0 +1,8 @@
+<!-- Green Phantom — crystal point with phantom layer inside -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <polygon points="60,8 84,28 84,80 60,112 36,80 36,28" fill="rgba(255,255,255,0.75)"/>
+  <polygon points="60,8 84,28 60,40 36,28" fill="rgba(255,255,255,0.95)"/>
+  <polygon points="60,48 74,40 74,72 60,90 46,72 46,40" fill="rgba(255,255,255,0.45)" stroke="rgba(255,255,255,0.55)" stroke-width="1"/>
+  <polygon points="60,48 74,40 60,52 46,40" fill="rgba(255,255,255,0.6)"/>
+  <line x1="60" y1="40" x2="60" y2="112" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+</svg>

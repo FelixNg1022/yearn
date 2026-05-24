@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FORTUNE_DATA",
+  "description": "The data contract an AI agent must satisfy to render a Yearn fortune card. Each card type (profile, daily, social) reads its own slice; the agent should populate all slices it intends to render.",
+  "type": "object",
+  "properties": {
+    "card": {
+      "type": "string",
+      "enum": ["profile", "daily", "social"],
+      "description": "Which card layout to render."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name shown in the card footer, e.g. \"Teri Shim\"."
+    },
+    "profile": {
+      "type": "object",
+      "description": "Data for the profile fortune card.",
+      "properties": {
+        "luckyNumber": {
+          "type": "integer",
+          "description": "The user's lucky number, displayed prominently.",
+          "examples": [7, 12, 42]
+        },
+        "luckyColor": {
+          "type": "string",
+          "description": "Lucky color — a palette name or hex value. Palette names: orange, marigold, rose, magenta, violet, azure, teal, lime. Unrecognised values fall back to orange.",
+          "enum": ["orange", "marigold", "rose", "magenta", "violet", "azure", "teal", "lime"],
+          "default": "orange"
+        },
+        "luckyStone": {
+          "type": "string",
+          "description": "Lucky gemstone. Determines which SVG illustration is shown.",
+          "enum": [
+            "jade", "clear-quartz", "amethyst", "rose-quartz", "black-obsidian",
+            "tiger-eye", "citrine", "red-agate", "lapis-lazuli", "moonstone",
+            "green-phantom", "red-coral"
+          ],
+          "default": "jade"
+        },
+        "millionaireChance": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Playful percentage chance of becoming a millionaire."
+        },
+        "meetLoveAge": {
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 99,
+          "description": "Age when the user will meet their love."
+        },
+        "projection": {
+          "type": "string",
+          "description": "A broad fortune reading paragraph, displayed in bold lowercase.",
+          "examples": ["a season of bold moves pays off — trust the momentum and let your instincts lead."]
+        }
+      },
+      "required": ["luckyNumber", "luckyColor", "luckyStone", "millionaireChance", "meetLoveAge", "projection"]
+    },
+    "daily": {
+      "type": "object",
+      "description": "Data for the daily reading card.",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The date shown in the header, e.g. \"may 22, 2026\". Lowercase preferred.",
+          "examples": ["may 22, 2026"]
+        },
+        "avoid": {
+          "type": "string",
+          "description": "The thing to avoid today, shown in a pill tag.",
+          "examples": ["overthinking", "skipping meals"]
+        },
+        "luck": {
+          "type": "object",
+          "description": "Luck scores across four life categories. Each is an integer 0–5 rendered as a segmented meter.",
+          "properties": {
+            "general": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "General luck score (0 = none, 5 = maximum)."
+            },
+            "relationship": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "Relationship luck score."
+            },
+            "academic": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "Academic luck score."
+            },
+            "career": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5,
+              "description": "Career luck score."
+            }
+          },
+          "required": ["general", "relationship", "academic", "career"]
+        }
+      },
+      "required": ["date", "avoid", "luck"]
+    },
+    "social": {
+      "type": "object",
+      "description": "Data for the social sharing card.",
+      "properties": {
+        "shareUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "The URL encoded into the QR code for sharing.",
+          "examples": ["https://yearn.cards/share/teri"]
+        }
+      },
+      "required": ["shareUrl"]
+    }
+  },
+  "required": ["card", "name"]
+}
