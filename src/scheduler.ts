@@ -44,7 +44,7 @@ export function createScheduler(opts: SchedulerOptions): Scheduler {
     try {
       const unarmed = await db.getCompleteUsersWithoutDailyCard();
       for (const u of unarmed) {
-        const nextAt = nextEightAmUtc(u.birth_tz!, now);
+        const nextAt = nextEightAmUtc("-07:00", now);
         await db.enableDailyCard(u.phone, nextAt);
         console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "healed daily card", phone: u.phone.slice(-4) }));
       }

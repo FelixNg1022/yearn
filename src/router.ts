@@ -215,10 +215,8 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
   const { db } = deps;
 
   // Arm daily card first — card render failure must not block scheduling
-  if (user.birth_tz) {
-    const nextAt = nextEightAmUtc(user.birth_tz, Date.now());
-    await db.enableDailyCard(phone, nextAt);
-  }
+  const nextAt = nextEightAmUtc("-07:00", Date.now());
+  await db.enableDailyCard(phone, nextAt);
 
   try {
     const data = await generateProfileCardData(user, deps);

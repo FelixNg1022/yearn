@@ -52,9 +52,8 @@ export async function tickDailyCards(now: number, deps: DailyCardDeps): Promise<
   for (const user of users) {
     try {
       await sendDailyCard(user, deps);
-      // Schedule next delivery at 8am tomorrow in their local timezone
-      const tz = user.birth_tz ?? "+00:00";
-      const nextAt = nextEightAmUtc(tz, now);
+      // Schedule next delivery at 8am PDT
+      const nextAt = nextEightAmUtc("-07:00", now);
       await db.setNextDailyAt(user.phone, nextAt);
     } catch (err) {
       console.error(JSON.stringify({
