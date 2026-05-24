@@ -6,19 +6,16 @@ import { config } from "./config.ts";
 const MODEL = "deepseek/deepseek-v4-flash";
 const BASE_URL = "https://openrouter.ai/api/v1";
 
-const SYSTEM_PROMPT = `You are 运 (yùn), a Gen Z fortune oracle on iMessage. You interpret ancient Chinese divination casts — the hexagrams and palaces are computed for you, your job is to read them.
+const SYSTEM_PROMPT = `You are 运 (yùn), a Gen Z fortune oracle on iMessage. You read divination casts — hexagrams/palaces are computed for you.
 
 Vibe rules:
-- Write like a supportive bestie who genuinely knows the cosmos. Warm, direct, a little mystical. Use Gen Z language naturally — "lowkey", "the cast is giving", "no cap", "it's serving", "main character energy", "understood the assignment", "the universe said" — but keep it organic, not forced.
-- Respond in the user's language (en or zh). For zh: keep it natural and fun, not stiff.
-- THREE short punchy paragraphs only:
-  1. What the hexagram/palace is literally saying about their situation. Name it. Be specific about the cast.
-  2. How their 八字 day master and element energy shifts the reading. Specific, not vague.
-  3. One concrete thing to do or watch for in the next few days. Commit. No hedging.
-- Never say "it depends" or "consider possibly" — the stars said what they said, period.
-- Never add disclaimers. The cosmos is speaking. Take it seriously.
-- If it's not a real life/vibe question (e.g. "what's 2+2"), let them know you only read actual situations — then invite them to try again cutely.
-- Under 180 words. No markdown. Plain iMessage text.`;
+- 2–4 sentences MAX. Punchy bestie energy — lowkey, direct, a little mystical. No essays.
+- Sentence 1: what the cast says about their question (name the hexagram/palace).
+- Sentence 2: how their 八字 day master colors it (one concrete detail).
+- Sentence 3 (optional): one thing to do or watch for soon. Commit — no hedging.
+- Under 70 words total. No markdown. Plain iMessage text.
+- Respond in the user's language (en or zh).
+- If they ask something silly (e.g. "what's 2+2"), say you only read real life questions — keep it cute and brief.`;
 
 export interface InterpretInput {
   question: string;
@@ -26,6 +23,8 @@ export interface InterpretInput {
   kernel: unknown;
   user: UserRow;
   recent: ReadingRow[];
+  /** When set, weave this % into a specific-outcome reading. */
+  probability?: number | null;
 }
 
 export interface QuestionClassification {
@@ -140,9 +139,9 @@ export function createLlm(): LlmClient {
 
     async classifyQuestion(question, lang) {
       const text = await chat(
-        `Classify a divination question as "specific" (asks about probability/likelihood of a concrete event) or "general" (seeks guidance on a situation/decision). Output strict JSON only — no prose, no markdown — with shape:
+        `Classify a divination question as "specific" (asks about probability/likelihood/outcome of a concrete future event — e.g. will I get the job, net worth, will we date) or "general" (seeks guidance, vibes, or open-ended advice). Output strict JSON only — no prose, no markdown — with shape:
 {"type":"general"|"specific","probability":<0-100>|null}
-probability: estimated percentage chance for specific questions based on question framing, null for general questions. Output JSON only.`,
+probability: estimated percentage for specific questions based on question framing; null for general. Output JSON only.`,
         `QUESTION (${lang}): ${question}\n\nReturn JSON.`,
         60,
       );
@@ -166,8 +165,11 @@ probability: estimated percentage chance for specific questions based on questio
         "USER 八字:",
         bazi ? JSON.stringify(bazi, null, 2) : "(not set)",
         "",
-        `Given the divination cast and user's 八字, produce today's daily scores. Use fun, Gen Z-flavored phrasing for avoid (think: "starting drama in the group chat", "saying yes to everything"). Output strict JSON only:
-{"avoid":"<≤8 words of what to avoid today>","relationship":<1-5>,"academic":<1-5>,"career":<1-5>,"general":<1-5>}
+        `Given today's date, the divination cast, and the user's 八字, forecast TODAY's energy across four luck areas.
+Score each 1-5 based on how today's elemental energy interacts with their day master and pillars.
+avoid: one short Gen-Z phrase for what to sidestep today (≤8 words).
+Output strict JSON only:
+{"avoid":"<≤8 words>","relationship":<1-5>,"academic":<1-5>,"career":<1-5>,"general":<1-5>}
 Output JSON only. No code fences. No commentary.`,
       ].join("\n");
 
@@ -301,10 +303,13 @@ Rules:
         "PAST READINGS (last 5, with what you said before and how it played out):",
         recentBlock,
         "",
-        `Respond in ${lang === "zh" ? "中文" : "English"}. Be specific. Commit to a reading. Keep the Gen Z bestie energy. Don't repeat phrasing from past readings.`,
-      ].join("\n");
+        `Respond in ${lang === "zh" ? "中文" : "English"}. Be specific. Keep it SHORT. Gen Z bestie energy. Don't repeat phrasing from past readings.`,
+        input.probability != null
+          ? `Estimated probability from the cast: ${input.probability}%. Mention it naturally in your reading.`
+          : "",
+      ].filter(Boolean).join("\n");
 
-      const text = await chat(SYSTEM_PROMPT, userPrompt, 600);
+      const text = await chat(SYSTEM_PROMPT, userPrompt, 180);
       if (!text) throw new Error("OpenRouter response missing text");
       return text;
     },

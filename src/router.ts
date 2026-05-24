@@ -6,7 +6,7 @@ import { handleOnboarding } from "./onboarding.ts";
 import { handleCommand } from "./commands.ts";
 import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
-import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./card/render.ts";
+import { renderProfileCard, renderSocialCard } from "./card/render.ts";
 import { trimProjection } from "./card/projection.ts";
 import {
   deriveCoreLuckyAttributes,
@@ -159,29 +159,7 @@ export async function route(
     useLlmHorizonFallback: config.useLlmHorizonFallback(),
   });
 
-  if (result.question_type === "specific") {
-    await sendText(phone, result.reply + STRINGS.specificQuestionNote[user.lang]);
-    return;
-  }
-
-  // General question — render Daily Reading Card.
-  if (result.daily_scores) {
-    const displayName = user.name ?? phone.slice(-4);
-    const png = await renderDailyReadingCard({
-      name: displayName,
-      date: receivedAt,
-      avoid: result.daily_scores.avoid,
-      relationship: result.daily_scores.relationship,
-      academic: result.daily_scores.academic,
-      career: result.daily_scores.career,
-      general: result.daily_scores.general,
-      shareUrl: SHARE_URL,
-    });
-    await sendCard(phone, result.reply, png);
-    return;
-  }
-
-  // Fallback: text-only if daily_scores somehow null for a general question.
+  // All on-demand questions → text only. Daily reading card sends at 8am local time.
   await sendText(phone, result.reply);
 }
 

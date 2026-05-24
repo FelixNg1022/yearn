@@ -13,26 +13,17 @@ export interface DailyCardDeps {
   llm: LlmClient;
 }
 
-/** Send a daily reading card to one user. */
+/** Send a daily reading card to one user at their local 8am. */
 export async function sendDailyCard(user: UserRow, deps: DailyCardDeps): Promise<void> {
   const { llm } = deps;
   const now = new Date();
   const cast = castMeihua(now);
 
   const question = user.lang === "zh"
-    ? "今天的整体运势如何？"
-    : "what is my overall fortune today?";
+    ? "根据我的八字，今天的整体能量和运势如何？"
+    : "based on my 八字, what is today's energy and fortune forecast?";
 
-  const [scores, interpretation] = await Promise.all([
-    llm.getDailyScores(question, cast, user),
-    llm.interpret({
-      question,
-      lang: user.lang,
-      kernel: cast,
-      user,
-      recent: [],
-    }),
-  ]);
+  const scores = await llm.getDailyScores(question, cast, user);
 
   const displayName = user.name ?? user.phone.slice(-4);
   const png = await renderDailyReadingCard({
@@ -47,8 +38,8 @@ export async function sendDailyCard(user: UserRow, deps: DailyCardDeps): Promise
   });
 
   const caption = user.lang === "zh"
-    ? `早安！✨ 今日运势\n${interpretation}`
-    : `good morning! ✨ today's fortune\n${interpretation}`;
+    ? "早安 ✨ 今日运势"
+    : "good morning ✨ your daily reading";
 
   await sendCard(user.phone, caption, png);
 }

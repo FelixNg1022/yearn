@@ -70,7 +70,7 @@ function help(lang: Lang): string {
       "/delete      删除所有数据",
       "",
       "直接发问题即可。含「小六壬 / liuren」切到小六壬。",
-      "具体 yes/no 问题 → 文字概率解读；开放式问题 → 完整运势卡。",
+      "问题 → 文字解读；每日运势卡每天早上 8 点（你的本地时间）自动发送。",
     ].join("\n");
   }
   return [
@@ -85,7 +85,7 @@ function help(lang: Lang): string {
     "/delete      delete all your data",
     "",
     "just text a question. include '小六壬' or 'liuren' for 小六壬 method.",
-    "specific yes/no questions → text probability read. open-ended vibes → full fortune card.",
+    "questions → text reading. daily fortune card auto-sends at 8am your local time.",
   ].join("\n");
 }
 

@@ -75,8 +75,8 @@ export const STRINGS = {
     zh: "还没有可分享的应验结果 ✨ 先问宇宙一个问题，应验了回 yes 就能分享啦！",
   },
   specificQuestionNote: {
-    en: "\n\n(ps — specific yes/no questions get a probability read. general vibes get a full fortune card ✨)",
-    zh: "\n\n（小提示：具体 yes/no 问题会给概率解读；开放式问题会收到完整运势卡 ✨）",
+    en: "\n\n(ps — your daily reading card drops every morning at 8am ✨)",
+    zh: "\n\n（小提示：每日运势卡会在早上 8 点自动发送 ✨）",
   },
   welcome: {
     en: "love that!! now drop your birthday so i can read your 八字 (e.g. Apr 7, 2004 or 2004-04-07)",
