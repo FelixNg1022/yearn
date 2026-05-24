@@ -1,7 +1,8 @@
 // src/index.ts
 import { openDb } from "./db.ts";
 import { createLlm } from "./llm.ts";
-import { initSpectrum } from "./spectrum/app.ts";
+import { closeSpectrum, initSpectrum } from "./spectrum/app.ts";
+import { InboundDedup, inboundMessageKey } from "./spectrum/dedup.ts";
 import { route } from "./router.ts";
 import { createScheduler } from "./scheduler.ts";
 import { closeRenderer } from "./card/render.ts";
@@ -104,7 +105,7 @@ async function startApp(): Promise<void> {
 
   const db = await openDb(dbUrl, dbToken);
   const llm = createLlm();
-  const app = await initSpectrum();
+  const inboundDedup = new InboundDedup(10 * 60 * 1000);
 
   console.log(JSON.stringify({
     ts: new Date().toISOString(), level: "INFO",
@@ -122,6 +123,7 @@ async function startApp(): Promise<void> {
   const shutdown = async (sig: string): Promise<void> => {
     console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: `${sig} received` }));
     scheduler.stop();
+    await closeSpectrum();
     await closeRenderer();
     await db.close();
     process.exit(0);
@@ -155,6 +157,13 @@ async function startApp(): Promise<void> {
         if (!phone.startsWith("+")) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: no + prefix", phone })); continue; }
         if (spaceType && spaceType !== "dm") { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: not dm", spaceType })); continue; }
         if (!text.trim()) { console.log(JSON.stringify({ ts: new Date().toISOString(), level: "DEBUG", msg: "skip: empty text" })); continue; }
+
+        const dedupKey = inboundMessageKey(message, phone, text);
+        const nowMs = Date.now();
+        if (inboundDedup.isDuplicate(dedupKey, nowMs)) {
+          console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "skip: duplicate inbound", dedupKey }));
+          continue;
+        }
 
         console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "routing", phone: phone.slice(-4), text_preview: text.slice(0, 20) }));
         try {
