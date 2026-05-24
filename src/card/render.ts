@@ -3,6 +3,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
+import { execSync } from "node:child_process";
 
 const HTML_DIR = path.resolve(import.meta.dir, "html");
 const CARD_W = 380;
@@ -58,9 +59,22 @@ function getServer(): Promise<number> {
 let _browser: Browser | null = null;
 let _page: Page | null = null;
 
+function findChromium(): string | undefined {
+  const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (!base) return undefined;
+  try {
+    const found = execSync(`find "${base}" -name "chrome" -type f 2>/dev/null | head -1`).toString().trim();
+    return found || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function getPage(): Promise<Page> {
   if (!_browser) {
-    _browser = await chromium.launch();
+    const executablePath = findChromium();
+    console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "chromium", executablePath: executablePath ?? "auto" }));
+    _browser = await chromium.launch({ executablePath });
   }
   if (!_page || _page.isClosed()) {
     const ctx = await _browser.newContext({

@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import type { Lang, ReadingRow, UserRow } from "./db.ts";
 import { config } from "./config.ts";
 
-const MODEL = "openrouter/free";
+const MODEL = "deepseek/deepseek-chat-v3-0324:free";
 const BASE_URL = "https://openrouter.ai/api/v1";
 
 const SYSTEM_PROMPT = `You are 运 (yùn), a Gen Z fortune oracle on iMessage. You interpret ancient Chinese divination casts — the hexagrams and palaces are computed for you, your job is to read them.
