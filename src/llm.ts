@@ -77,6 +77,8 @@ export interface LlmClient {
    * Called once at onboarding completion.
    */
   getLuckyAttributes(bazi: unknown, lang: Lang): Promise<LuckyAttributes>;
+  /** One- or two-sentence broad fortune blurb for the profile card projection box. */
+  getProfileProjection(input: { bazi: unknown; name: string | null; lang: Lang }): Promise<string>;
   /**
    * Resolve a free-text location (city name, abbreviation, region) to a
    * UTC offset string like "+08:00". Returns null if unrecognisable.
@@ -228,6 +230,26 @@ Output JSON only. No code fences. No commentary.`,
         millionaireChance: clampPct(parsed.millionaireChance, fallback.millionaireChance),
         meetLoveAge: clampAge(parsed.meetLoveAge, fallback.meetLoveAge),
       };
+    },
+
+    async getProfileProjection({ bazi, name, lang }) {
+      const limit = lang === "zh" ? 85 : 115;
+      const text = await chat(
+        `You write ultra-short fortune projections for a small profile card.
+Hard limit: ${limit} characters including spaces — never exceed this.
+Output 1–2 short sentences only. Gen Z bestie tone but concise, like a fortune cookie.
+Reference the user's 八字 day master or element if it fits naturally.
+No markdown, no emoji, no line breaks. Plain text only.`,
+        [
+          `USER: ${name ?? "friend"}`,
+          `八字: ${JSON.stringify(bazi)}`,
+          `Lang: ${lang}`,
+          "",
+          `Write the projection in ${lang === "zh" ? "中文" : "English"}. Under ${limit} chars.`,
+        ].join("\n"),
+        60,
+      );
+      return text.trim();
     },
 
     async resolveTimezone(location) {

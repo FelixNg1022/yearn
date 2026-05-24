@@ -7,6 +7,7 @@ import { handleCommand } from "./commands.ts";
 import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
 import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./card/render.ts";
+import { trimProjection } from "./card/projection.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
@@ -271,25 +272,13 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
 }
 
 async function generateProfileCardData(user: import("./db.ts").UserRow, deps: RouterDeps): Promise<import("./db.ts").ProfileCardData> {
-  const { db, llm } = deps;
+  const { llm } = deps;
   const bazi = JSON.parse(user.bazi_pillars!);
-  const recentReadings = await db.getRecentReadings(user.phone, 3);
-  const [luckyAttrs, projection] = await Promise.all([
+  const [luckyAttrs, projectionRaw] = await Promise.all([
     llm.getLuckyAttributes(bazi, user.lang),
-    llm.interpret({
-      question: user.lang === "zh" ? "请给我一个关于近期整体运势的宏观解读。" : "Give me a broad projection of my overall fortune for the near future.",
-      lang: user.lang,
-      kernel: {},
-      user,
-      recent: recentReadings,
-    }),
+    llm.getProfileProjection({ bazi, name: user.name, lang: user.lang }),
   ]);
-  // Card projection box fits ~200 chars at the current font size (5-line clamp).
-  // Trim at the last space before the limit so words aren't cut mid-word.
-  const MAX_PROJECTION = 200;
-  const trimmedProjection = projection.length > MAX_PROJECTION
-    ? projection.slice(0, projection.lastIndexOf(" ", MAX_PROJECTION)) + "…"
-    : projection;
+  const projection = trimProjection(projectionRaw, user.lang);
 
   return {
     luckyNumber: luckyAttrs.number,
@@ -297,7 +286,7 @@ async function generateProfileCardData(user: import("./db.ts").UserRow, deps: Ro
     luckyStone: luckyAttrs.stone,
     millionaireChance: luckyAttrs.millionaireChance,
     meetLoveAge: luckyAttrs.meetLoveAge,
-    projection: trimmedProjection,
+    projection,
   };
 }
 
