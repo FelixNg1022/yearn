@@ -193,14 +193,9 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     const { db } = deps;
     const displayName = user.name ?? phone.slice(-4);
     try {
-      let data: import("./db.ts").ProfileCardData | null = user.profile_card_json
-        ? (JSON.parse(user.profile_card_json) as import("./db.ts").ProfileCardData)
-        : null;
-
-      if (!data) {
-        data = await generateProfileCardData(user, deps);
-        await db.saveProfileCardData(phone, data);
-      }
+      // Always regenerate on explicit /profile request so users never see stale data.
+      const data = await generateProfileCardData(user, deps);
+      await db.saveProfileCardData(phone, data);
 
       const png = await renderProfileCard({
         name: displayName,
@@ -283,11 +278,18 @@ async function generateProfileCardData(user: import("./db.ts").UserRow, deps: Ro
       recent: recentReadings,
     }),
   ]);
+  // Card projection box fits ~200 chars at the current font size (5-line clamp).
+  // Trim at the last space before the limit so words aren't cut mid-word.
+  const MAX_PROJECTION = 200;
+  const trimmedProjection = projection.length > MAX_PROJECTION
+    ? projection.slice(0, projection.lastIndexOf(" ", MAX_PROJECTION)) + "…"
+    : projection;
+
   return {
     luckyNumber: luckyAttrs.number,
     luckyColor: luckyAttrs.color,
     luckyStone: luckyAttrs.stone,
-    projection,
+    projection: trimmedProjection,
   };
 }
 
