@@ -1,5 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { type Value } from 'react-phone-number-input'
+import { PhoneInput } from './PhoneInput'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
@@ -8,14 +10,9 @@ interface Props {
 }
 
 export function PhoneModal({ onClose }: Props) {
-  const [phone, setPhone] = useState('')
+  const [phone, setPhone] = useState<Value | undefined>(undefined)
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
 
   // Close on backdrop click or Escape
   useEffect(() => {
@@ -26,14 +23,14 @@ export function PhoneModal({ onClose }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!phone.trim()) return
+    if (!phone) return
     setStatus('loading')
     setErrorMsg('')
     try {
       const res = await fetch(`${API_URL}/api/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify({ phone }),
       })
       const data = await res.json() as { ok?: boolean; smsUrl?: string; error?: string }
       if (!res.ok || !data.smsUrl) {
@@ -77,13 +74,9 @@ export function PhoneModal({ onClose }: Props) {
         <p className="text-sm text-gray-500 mb-5">we'll open iMessage so you can say hi ✨</p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            ref={inputRef}
-            type="tel"
+          <PhoneInput
             value={phone}
-            onChange={e => setPhone(e.target.value)}
-            placeholder="+1 (415) 000-0000"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 text-base"
+            onChange={setPhone}
             disabled={status === 'loading'}
           />
 
@@ -93,7 +86,7 @@ export function PhoneModal({ onClose }: Props) {
 
           <button
             type="submit"
-            disabled={status === 'loading' || !phone.trim()}
+            disabled={status === 'loading' || !phone}
             className="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-base transition-colors"
           >
             {status === 'loading' ? 'connecting…' : 'open iMessage →'}

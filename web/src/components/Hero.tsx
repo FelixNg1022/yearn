@@ -76,6 +76,18 @@ export function Hero() {
         <MobileLayout reduceMotion={rm} onOpen={openModal} />
       </div>
 
+      {/* Designer credit */}
+      <div className="absolute bottom-3 right-4 z-50 pointer-events-auto">
+        <a
+          href="https://x.com/shimteri"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-display text-marigold-hi/60 hover:text-marigold-hi transition-colors"
+        >
+          design by teri shim ✦
+        </a>
+      </div>
+
       <AnimatePresence>
         {modalOpen && <PhoneModal onClose={() => setModalOpen(false)} />}
       </AnimatePresence>
