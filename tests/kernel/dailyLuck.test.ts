@@ -5,6 +5,7 @@ import {
   computeFlowPillars,
   localCalendarParts,
   rawToLuckScore,
+  tenGod,
 } from "../../src/kernel/dailyLuck.ts";
 
 describe("localCalendarParts", () => {
@@ -56,6 +57,16 @@ describe("computeDailyLuck", () => {
     expect(a).not.toEqual(b);
   });
 
+  test("same day master element but different charts diverge", () => {
+    const chartA = computeBazi("1998-03-15T09:30:00+08:00"); // 辛酉
+    const chartB = computeBazi("2000-06-01T12:00:00+08:00"); // 庚寅
+    expect(chartA.day_master_element).toBe(chartB.day_master_element);
+    const at = new Date("2026-05-24T15:00:00.000Z");
+    const a = computeDailyLuck(chartA, at, "-07:00");
+    const b = computeDailyLuck(chartB, at, "-07:00");
+    expect(a).not.toEqual(b);
+  });
+
   test("all scores are integers from 1 to 5", () => {
     const luck = computeDailyLuck(felix, new Date("2026-05-24T15:00:00.000Z"), "-07:00");
     for (const key of ["general", "relationship", "academic", "career"] as const) {
@@ -75,8 +86,15 @@ describe("computeDailyLuck", () => {
 });
 
 describe("rawToLuckScore", () => {
-  test("maps bounds to 1 and 5", () => {
-    expect(rawToLuckScore(-3)).toBe(1);
-    expect(rawToLuckScore(5)).toBe(5);
+  test("maps low and high raw values into 1–5", () => {
+    expect(rawToLuckScore(-6)).toBe(1);
+    expect(rawToLuckScore(8)).toBe(5);
+    expect(rawToLuckScore(0)).toBe(3);
+  });
+});
+
+describe("tenGod", () => {
+  test("癸 day master sees 甲 as 伤官", () => {
+    expect(tenGod("癸", "甲")).toBe("shangGuan");
   });
 });

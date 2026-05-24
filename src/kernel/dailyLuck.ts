@@ -3,6 +3,20 @@ import type { BaziResult, Pillar } from "./bazi.ts";
 
 export type WuXing = "木" | "火" | "土" | "金" | "水";
 
+export type LuckCategory = "general" | "relationship" | "academic" | "career";
+
+export type TenGod =
+  | "biJian"
+  | "jieCai"
+  | "shiShen"
+  | "shangGuan"
+  | "pianCai"
+  | "zhengCai"
+  | "qiSha"
+  | "zhengGuan"
+  | "pianYin"
+  | "zhengYin";
+
 export interface FlowPillars {
   calendar: { year: number; month: number; day: number };
   year_pillar: Pillar;
@@ -39,6 +53,7 @@ const CONTROLS: Readonly<Record<WuXing, WuXing>> = {
   木: "土", 火: "金", 土: "水", 金: "木", 水: "火",
 };
 
+const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
 const PEACH_BLOSSOM = new Set(["子", "午", "卯", "酉"]);
 
 const LIU_HE: Readonly<Record<string, string>> = {
@@ -51,6 +66,32 @@ const CHONG: Readonly<Record<string, string>> = {
   子: "午", 午: "子", 丑: "未", 未: "丑",
   寅: "申", 申: "寅", 卯: "酉", 酉: "卯",
   辰: "戌", 戌: "辰", 巳: "亥", 亥: "巳",
+};
+
+const LIU_HAI: Readonly<Record<string, string>> = {
+  子: "未", 未: "子", 丑: "午", 午: "丑",
+  寅: "巳", 巳: "寅", 卯: "辰", 辰: "卯",
+  申: "亥", 亥: "申", 酉: "戌", 戌: "酉",
+};
+
+const NATAL_PILLARS: ReadonlyArray<{ key: keyof BaziResult; weight: number }> = [
+  { key: "day_pillar", weight: 1.0 },
+  { key: "month_pillar", weight: 0.65 },
+  { key: "hour_pillar", weight: 0.55 },
+  { key: "year_pillar", weight: 0.4 },
+];
+
+const GOD_VALUE: Readonly<Record<TenGod, Readonly<Record<LuckCategory, number>>>> = {
+  zhengYin: { general: 2.0, relationship: 0.6, academic: 3.0, career: 0.8 },
+  pianYin: { general: 1.4, relationship: 0.2, academic: 2.4, career: 0.4 },
+  zhengGuan: { general: 1.0, relationship: 0.5, academic: 0.4, career: 2.6 },
+  qiSha: { general: -1.2, relationship: -0.8, academic: -0.6, career: 1.6 },
+  zhengCai: { general: 1.6, relationship: 2.4, academic: 0.2, career: 2.2 },
+  pianCai: { general: 1.0, relationship: 1.8, academic: 0.0, career: 1.6 },
+  shiShen: { general: 1.8, relationship: 1.0, academic: 1.2, career: 0.6 },
+  shangGuan: { general: 0.4, relationship: 1.4, academic: -0.8, career: -0.4 },
+  biJian: { general: 0.2, relationship: -0.6, academic: 0.2, career: -0.6 },
+  jieCai: { general: -0.6, relationship: -1.2, academic: -0.4, career: -1.0 },
 };
 
 /** Wall-clock calendar date in a fixed UTC offset (e.g. "+08:00", "-07:00"). */
@@ -111,109 +152,111 @@ function branchEl(branch: string): WuXing {
   return e;
 }
 
-function resourceOf(dm: WuXing): WuXing {
-  for (const [src, dst] of Object.entries(GENERATES) as [WuXing, WuXing][]) {
-    if (dst === dm) return src;
-  }
-  throw new Error(`No resource element for ${dm}`);
+function isYang(stem: string): boolean {
+  return YANG_STEMS.has(stem);
 }
 
-function wealthOf(dm: WuXing): WuXing {
-  return CONTROLS[dm];
+/** 十神 of `other` relative to the day master stem. */
+export function tenGod(dayMaster: string, other: string): TenGod {
+  const dmEl = stemEl(dayMaster);
+  const otherEl = stemEl(other);
+  const samePol = isYang(dayMaster) === isYang(other);
+
+  if (dmEl === otherEl) return samePol ? "biJian" : "jieCai";
+  if (GENERATES[dmEl] === otherEl) return samePol ? "shiShen" : "shangGuan";
+  if (CONTROLS[dmEl] === otherEl) return samePol ? "pianCai" : "zhengCai";
+  if (CONTROLS[otherEl] === dmEl) return samePol ? "qiSha" : "zhengGuan";
+  if (GENERATES[otherEl] === dmEl) return samePol ? "pianYin" : "zhengYin";
+  throw new Error(`No ten-god relation between ${dayMaster} and ${other}`);
 }
 
-function officerOf(dm: WuXing): WuXing {
-  for (const [src, dst] of Object.entries(CONTROLS) as [WuXing, WuXing][]) {
-    if (dst === dm) return src;
-  }
-  throw new Error(`No officer element for ${dm}`);
+function godContribution(dayMaster: string, stem: string, category: LuckCategory, weight: number): number {
+  return GOD_VALUE[tenGod(dayMaster, stem)][category] * weight;
 }
 
-/** How an encountered element interacts with the day master (日主). */
-function harmony(dm: WuXing, other: WuXing): number {
-  if (other === dm) return 1;
-  if (GENERATES[other] === dm) return 2.5;   // 印 — resource / support
-  if (GENERATES[dm] === other) return 0.5;   // 食伤 — output / drain
-  if (CONTROLS[other] === dm) return -2;      // 官杀 — pressure
-  if (CONTROLS[dm] === other) return 1.5;      // 财 — wealth / grasp
+function branchHarmony(dm: WuXing, branch: string): number {
+  const other = branchEl(branch);
+  if (other === dm) return 0.8;
+  if (GENERATES[other] === dm) return 1.6;
+  if (GENERATES[dm] === other) return 0.4;
+  if (CONTROLS[other] === dm) return -1.4;
+  if (CONTROLS[dm] === other) return 1.0;
   return 0;
 }
 
-function pillarTouchScore(dm: WuXing, pillar: Pillar): number {
-  const stemScore = harmony(dm, stemEl(pillar.gan));
-  const branchScore = harmony(dm, branchEl(pillar.zhi));
-  const hiddenAvg = pillar.hide_gan.length === 0
-    ? branchScore
-    : pillar.hide_gan.reduce((sum, g) => sum + harmony(dm, stemEl(g)), 0) / pillar.hide_gan.length;
-  return stemScore * 0.45 + branchScore * 0.35 + hiddenAvg * 0.2;
+function branchInteraction(
+  natalZhi: string,
+  flowZhi: string,
+  category: LuckCategory,
+): number {
+  if (natalZhi === flowZhi) {
+    return category === "relationship" ? 0.8 : 0.5;
+  }
+  if (LIU_HE[natalZhi] === flowZhi) {
+    return category === "relationship" ? 2.8 : 1.4;
+  }
+  if (CHONG[natalZhi] === flowZhi) {
+    return category === "relationship" ? -2.8 : -1.6;
+  }
+  if (LIU_HAI[natalZhi] === flowZhi) {
+    return category === "relationship" ? -1.4 : -0.8;
+  }
+  if (category === "relationship" && PEACH_BLOSSOM.has(flowZhi)) {
+    return PEACH_BLOSSOM.has(natalZhi) ? 1.8 : 1.0;
+  }
+  return 0;
 }
 
-function relationshipScore(user: BaziResult, flow: FlowPillars): number {
-  const dayBranch = user.day_pillar.zhi;
-  const flowBranch = flow.day_pillar.zhi;
-  let raw = pillarTouchScore(user.day_master_element as WuXing, flow.day_pillar) * 0.35;
+function scoreFlowStem(
+  dayMaster: string,
+  flowStem: string,
+  category: LuckCategory,
+  weight: number,
+): number {
+  return godContribution(dayMaster, flowStem, category, weight);
+}
 
-  if (LIU_HE[dayBranch] === flowBranch) raw += 2.5;
-  if (CHONG[dayBranch] === flowBranch) raw -= 3;
+function scoreFlowPillarAgainstNatal(
+  user: BaziResult,
+  flowPillar: Pillar,
+  flowWeight: number,
+  category: LuckCategory,
+): number {
+  const dm = user.day_master;
+  let raw = 0;
 
-  if (PEACH_BLOSSOM.has(flowBranch)) {
-    raw += PEACH_BLOSSOM.has(user.year_pillar.zhi) || PEACH_BLOSSOM.has(user.day_pillar.zhi) ? 2 : 1;
+  raw += scoreFlowStem(dm, flowPillar.gan, category, flowWeight * 1.0);
+
+  for (const { key, weight } of NATAL_PILLARS) {
+    const natal = user[key] as Pillar;
+    raw += godContribution(dm, flowPillar.gan, category, flowWeight * weight * 0.35)
+      * (natal.gan === flowPillar.gan ? 1.2 : 1);
+    raw += branchInteraction(natal.zhi, flowPillar.zhi, category) * weight;
+    raw += branchHarmony(stemEl(dm), flowPillar.zhi) * weight * 0.25;
+    for (const hidden of flowPillar.hide_gan) {
+      raw += godContribution(dm, hidden, category, flowWeight * weight * 0.12);
+    }
   }
 
-  // Spouse palace (日支) resonance with flow month stem
-  raw += harmony(stemEl(user.day_pillar.gan), stemEl(flow.month_pillar.gan)) * 0.4;
   return raw;
 }
 
-function academicScore(dm: WuXing, flow: FlowPillars): number {
-  const seal = resourceOf(dm);
-  const scoreFor = (el: WuXing) => (el === seal ? 2.5 : el === dm ? 0.5 : harmony(dm, el));
+function scoreCategory(user: BaziResult, flow: FlowPillars, category: LuckCategory): number {
+  let raw = 0;
+  raw += scoreFlowPillarAgainstNatal(user, flow.day_pillar, 1.15, category);
+  raw += scoreFlowPillarAgainstNatal(user, flow.month_pillar, 0.55, category);
+  raw += scoreFlowPillarAgainstNatal(user, flow.year_pillar, 0.25, category);
 
-  const dayStem = scoreFor(stemEl(flow.day_pillar.gan));
-  const dayBranch = scoreFor(branchEl(flow.day_pillar.zhi));
-  const monthStem = scoreFor(stemEl(flow.month_pillar.gan)) * 0.6;
-  const hidden = flow.day_pillar.hide_gan.reduce((sum, g) => sum + scoreFor(stemEl(g)), 0)
-    / Math.max(1, flow.day_pillar.hide_gan.length);
+  // Day master vs flow day branch element (日支气)
+  raw += branchHarmony(stemEl(user.day_master), flow.day_pillar.zhi) * 0.9;
 
-  return dayStem * 0.35 + dayBranch * 0.3 + monthStem * 0.2 + hidden * 0.15;
+  return raw;
 }
 
-function careerScore(dm: WuXing, flow: FlowPillars): number {
-  const wealth = wealthOf(dm);
-  const officer = officerOf(dm);
-
-  const wealthHits = [flow.day_pillar, flow.month_pillar].reduce((sum, p) => {
-    let hit = 0;
-    if (stemEl(p.gan) === wealth) hit += 2;
-    if (branchEl(p.zhi) === wealth) hit += 1.5;
-    for (const g of p.hide_gan) if (stemEl(g) === wealth) hit += 0.75;
-    return sum + hit;
-  }, 0);
-
-  const officerHits = [flow.day_pillar, flow.month_pillar].reduce((sum, p) => {
-    let hit = 0;
-    if (stemEl(p.gan) === officer) hit += 1.5;
-    if (branchEl(p.zhi) === officer) hit += 1;
-    for (const g of p.hide_gan) if (stemEl(g) === officer) hit += 0.5;
-    return sum + hit;
-  }, 0);
-
-  // Moderate 官杀 supports discipline; excessive officer pressure drags score.
-  const officerTerm = officerHits <= 2.5 ? officerHits * 0.9 : 2.5 - (officerHits - 2.5) * 0.8;
-  return wealthHits * 0.55 + officerTerm * 0.45 + pillarTouchScore(dm, flow.day_pillar) * 0.25;
-}
-
-function generalScore(dm: WuXing, flow: FlowPillars): number {
-  const day = pillarTouchScore(dm, flow.day_pillar);
-  const month = pillarTouchScore(dm, flow.month_pillar) * 0.65;
-  const year = pillarTouchScore(dm, flow.year_pillar) * 0.35;
-  return day * 0.55 + month * 0.3 + year * 0.15;
-}
-
-/** Map a raw interaction sum to a 1–5 meter score. */
-export function rawToLuckScore(raw: number, min = -3, max = 5): number {
-  const clamped = Math.max(min, Math.min(max, raw));
-  return Math.max(1, Math.min(5, Math.round(((clamped - min) / (max - min)) * 4 + 1)));
+/** Map a raw 十神 interaction sum to a 1–5 meter score. */
+export function rawToLuckScore(raw: number): number {
+  const score = 3 + raw * 0.30;
+  return Math.max(1, Math.min(5, Math.round(score)));
 }
 
 /**
@@ -227,13 +270,12 @@ export function computeDailyLuck(
 ): DailyLuckScores {
   const cal = localCalendarParts(at, tzOffset);
   const flow = computeFlowPillars(cal.year, cal.month, cal.day);
-  const dm = userBazi.day_master_element as WuXing;
 
   return {
-    general: rawToLuckScore(generalScore(dm, flow)),
-    relationship: rawToLuckScore(relationshipScore(userBazi, flow)),
-    academic: rawToLuckScore(academicScore(dm, flow)),
-    career: rawToLuckScore(careerScore(dm, flow)),
+    general: rawToLuckScore(scoreCategory(userBazi, flow, "general")),
+    relationship: rawToLuckScore(scoreCategory(userBazi, flow, "relationship")),
+    academic: rawToLuckScore(scoreCategory(userBazi, flow, "academic")),
+    career: rawToLuckScore(scoreCategory(userBazi, flow, "career")),
     flow,
   };
 }
