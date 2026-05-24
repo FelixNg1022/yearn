@@ -164,17 +164,11 @@ function renderDaily(data, cardEl) {
   cardEl.querySelector('.card__header-title').innerHTML =
     `<span class="daily-header-row">${CALENDAR_SVG} ${safe(d.date)}</span>`;
 
-  const avoidText = (() => {
-    const raw = safe(d.avoid);
-    const words = raw.split(/\s+/);
-    return words.length > 6 ? words.slice(0, 6).join(' ') + '...' : raw;
-  })();
-
   const body = cardEl.querySelector('.card__body');
   body.innerHTML = `
     <div class="daily-avoid">
-      <span class="daily-avoid__label">try to avoid</span>
-      <span class="daily-pill">${avoidText}</span>
+      <span class="daily-avoid__label">Try to avoid...</span>
+      <span class="daily-pill">${safe(d.avoid)}</span>
     </div>
     <div class="daily-meters">
       ${meterHTML('General Luck', luck.general, 'primary')}

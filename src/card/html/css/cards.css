@@ -335,54 +335,43 @@
 }
 
 .daily-avoid {
-  background: linear-gradient(
-    to bottom,
-    var(--card-color),
-    color-mix(in srgb, var(--card-color), white 18%)
-  );
-  border-radius: var(--radius-block);
-  padding: 16px 20px 20px;
-  margin-bottom: var(--space-4);
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  text-align: center;
+  margin-bottom: var(--space-5);
 }
 
 .daily-avoid__label {
   display: block;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: var(--text-xs);
-  color: rgba(255, 255, 255, 0.8);
-  text-transform: lowercase;
-  letter-spacing: 0.04em;
+  font-size: 15px;
+  color: var(--card-color);
+  margin-bottom: var(--space-2);
 }
 
 .daily-pill {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--text-2xl);
-  color: var(--color-on-brand);
-  text-transform: lowercase;
-  text-align: center;
-  line-height: 1.25;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.daily-meters {
+  display: inline-block;
+  max-width: 100%;
   background: linear-gradient(
     to bottom,
     var(--card-color),
     color-mix(in srgb, var(--card-color), white 18%)
   );
-  border-radius: var(--radius-block);
-  padding: 16px 20px 20px;
-  flex: 1;
+  color: var(--color-on-brand);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-2xl);
+  text-transform: lowercase;
+  padding: 8px 22px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.daily-meters {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -400,7 +389,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 18px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--card-color);
 }
 
 .meter--primary .meter__cells {
@@ -412,13 +401,13 @@
   width: 46px;
   height: 23px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 3px solid rgba(255, 255, 255, 0.45);
+  background: var(--color-card-bg);
+  border: 3px solid var(--card-color);
 }
 
 .meter--primary .meter__cell--filled {
-  background: var(--color-on-brand);
-  border-color: var(--color-on-brand);
+  background: var(--card-color);
+  border-color: var(--card-color);
 }
 
 /* ---- Secondary meters (Relationship / Academic / Career) ---- */
@@ -433,7 +422,7 @@
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--card-color);
 }
 
 .meter--secondary .meter__cells {
@@ -445,13 +434,13 @@
   width: 32px;
   height: 16px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: var(--color-card-bg);
+  border: 2px solid var(--color-accent-secondary);
 }
 
 .meter--secondary .meter__cell--filled {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.85);
+  background: var(--color-accent-secondary);
+  border-color: var(--color-accent-secondary);
 }
 
 /* ==========================================================================
