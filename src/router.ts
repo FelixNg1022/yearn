@@ -8,6 +8,8 @@ import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
 import { renderProfileCard, renderDailyReadingCard, renderSocialCard } from "./card/render.ts";
 import { trimProjection } from "./card/projection.ts";
+import { deriveLuckyAttributes } from "./card/luckyAttributes.ts";
+import type { ProfileCardData } from "./db.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
 
@@ -196,7 +198,7 @@ async function sendProfileCard(phone: string, user: import("./db.ts").UserRow, d
     const { db } = deps;
     const displayName = user.name ?? phone.slice(-4);
     try {
-      // Always regenerate on explicit /profile request so users never see stale data.
+      // Regenerate projection; lucky number/color/stone are fixed per 八字.
       const data = await generateProfileCardData(user, deps);
       await db.saveProfileCardData(phone, data);
 
@@ -271,21 +273,23 @@ async function prepareAndSendProfileCard(phone: string, user: import("./db.ts").
   }
 }
 
-async function generateProfileCardData(user: import("./db.ts").UserRow, deps: RouterDeps): Promise<import("./db.ts").ProfileCardData> {
+async function generateProfileCardData(
+  user: import("./db.ts").UserRow,
+  deps: RouterDeps,
+): Promise<ProfileCardData> {
   const { llm } = deps;
   const bazi = JSON.parse(user.bazi_pillars!);
-  const [luckyAttrs, projectionRaw] = await Promise.all([
-    llm.getLuckyAttributes(bazi, user.lang),
-    llm.getProfileProjection({ bazi, name: user.name, lang: user.lang }),
-  ]);
+  const attrs = deriveLuckyAttributes(bazi);
+
+  const projectionRaw = await llm.getProfileProjection({ bazi, name: user.name, lang: user.lang });
   const projection = trimProjection(projectionRaw, user.lang);
 
   return {
-    luckyNumber: luckyAttrs.number,
-    luckyColor: luckyAttrs.color,
-    luckyStone: luckyAttrs.stone,
-    millionaireChance: luckyAttrs.millionaireChance,
-    meetLoveAge: luckyAttrs.meetLoveAge,
+    luckyNumber: attrs.number,
+    luckyColor: attrs.color,
+    luckyStone: attrs.stone,
+    millionaireChance: attrs.millionaireChance,
+    meetLoveAge: attrs.meetLoveAge,
     projection,
   };
 }
