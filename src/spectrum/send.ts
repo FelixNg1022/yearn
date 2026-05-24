@@ -11,8 +11,16 @@ async function getSpace(phone: string) {
 }
 
 export async function sendText(phone: string, text: string): Promise<void> {
-  const space = await getSpace(phone);
-  await space.send(text);
+  try {
+    const space = await getSpace(phone);
+    await space.send(text);
+  } catch (err) {
+    console.error(JSON.stringify({
+      ts: new Date().toISOString(), level: "ERROR", msg: "sendText failed",
+      phone: phone.slice(-4), err: String(err),
+    }));
+    throw err;
+  }
 }
 
 export async function sendCard(phone: string, text: string, png: Buffer): Promise<void> {

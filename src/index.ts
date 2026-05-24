@@ -3,6 +3,8 @@ import { openDb } from "./db.ts";
 import { createLlm } from "./llm.ts";
 import { closeSpectrum, initSpectrum } from "./spectrum/app.ts";
 import { InboundDedup, inboundMessageKey } from "./spectrum/dedup.ts";
+import { reconnectDelayMs, startupConnectDelayMs } from "./spectrum/reconnect.ts";
+import { getSpectrumStatus, setSpectrumStatus } from "./spectrum/status.ts";
 import { route } from "./router.ts";
 import { createScheduler } from "./scheduler.ts";
 import { closeRenderer } from "./card/render.ts";
@@ -31,7 +33,14 @@ Bun.serve({
     }
 
     if (url.pathname === "/health") {
-      return Response.json({ ok: true }, { headers: cors });
+      const spectrum = getSpectrumStatus();
+      // ok stays true so Railway healthchecks pass while Spectrum is still connecting.
+      return Response.json({
+        ok: true,
+        spectrum: spectrum.status,
+        spectrum_connected_at: spectrum.connectedAt,
+        spectrum_last_error: spectrum.lastError,
+      }, { headers: cors });
     }
 
     if (url.pathname === "/api/start" && req.method === "POST") {
@@ -132,12 +141,23 @@ async function startApp(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
+  const startupDelay = startupConnectDelayMs();
+  if (startupDelay > 0) {
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(), level: "INFO",
+      msg: "waiting before spectrum connect (deploy overlap)",
+      delay_ms: startupDelay,
+    }));
+    await Bun.sleep(startupDelay);
+  }
+
   // Reconnect loop — if the Spectrum WebSocket drops, reinitialise and resume.
-  let reconnectDelayMs = 5_000;
+  let reconnectAttempt = 0;
   while (true) {
     try {
+      await closeSpectrum();
       const liveApp = await initSpectrum();
-      reconnectDelayMs = 5_000; // reset backoff on successful connect
+      reconnectAttempt = 0;
 
       console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "inbound loop started" }));
       for await (const [space, message] of liveApp.messages) {
@@ -186,15 +206,21 @@ async function startApp(): Promise<void> {
         }
       }
       console.log(JSON.stringify({ ts: new Date().toISOString(), level: "WARN", msg: "inbound loop ended — reconnecting" }));
+      setSpectrumStatus("disconnected");
     } catch (err) {
+      reconnectAttempt += 1;
+      const waitMs = reconnectDelayMs(reconnectAttempt, err);
       console.error(JSON.stringify({
         ts: new Date().toISOString(), level: "ERROR", msg: "spectrum connect failed — reconnecting",
-        err: String(err), retry_in_ms: reconnectDelayMs,
+        err: String(err), retry_in_ms: waitMs, attempt: reconnectAttempt,
       }));
+      setSpectrumStatus("disconnected", err);
+      await Bun.sleep(waitMs);
+      continue;
     }
 
-    await Bun.sleep(reconnectDelayMs);
-    reconnectDelayMs = Math.min(reconnectDelayMs * 2, 60_000);
+    // Brief pause before reconnect after a clean loop exit (stream ended).
+    await Bun.sleep(reconnectDelayMs(1, new Error("stream ended")));
   }
 }
 
