@@ -6,6 +6,7 @@ import { handleOnboarding } from "./onboarding.ts";
 import { handleCommand } from "./commands.ts";
 import { parseOutcome, looksLikeOutcome, isShareRequest } from "./outcomes.ts";
 import { runQuery } from "./query.ts";
+import { sendDailyCard } from "./dailyCard.ts";
 import { renderProfileCard, renderSocialCard } from "./card/render.ts";
 import { trimProjection } from "./card/projection.ts";
 import {
@@ -84,6 +85,10 @@ export async function route(
     const result = await handleCommand(trimmed, user, db);
     if (result.sideEffect === "render_profile_card") {
       await sendProfileCard(phone, user, deps);
+      return;
+    }
+    if (result.sideEffect === "send_daily_card") {
+      await sendDailyCardOnDemand(phone, user, deps);
       return;
     }
     await sendText(phone, result.reply);
@@ -304,6 +309,31 @@ async function generateProfileCardData(
     projection,
     statsVersion: PROFILE_STATS_VERSION,
   };
+}
+
+/** Handles /daily — sends the daily reading card on demand. */
+async function sendDailyCardOnDemand(phone: string, user: UserRow, deps: RouterDeps): Promise<void> {
+  if (!user.bazi_pillars) {
+    await sendText(phone, user.lang === "zh"
+      ? "还没有八字数据哦～ 发「/setup」来设置一下吧 ✨"
+      : "i need your 八字 first ✨ send /setup to get started!");
+    return;
+  }
+
+  await sendText(phone, user.lang === "zh" ? "正在生成今日运势卡 ✨" : "brewing your daily card ✨ one sec!");
+
+  void (async () => {
+    try {
+      await sendDailyCard(user, deps);
+    } catch (err) {
+      console.error(JSON.stringify({ ts: new Date().toISOString(), level: "ERROR", msg: "sendDailyCardOnDemand", phone: phone.slice(-4), err: String(err) }));
+      try {
+        await sendText(phone, user.lang === "zh"
+          ? "运势卡遇到点问题，稍后再试吧 😅"
+          : "the stars fumbled that one 😅 try again in a sec!");
+      } catch { /* best-effort */ }
+    }
+  })();
 }
 
 /** Returns the UTC epoch ms for the next 8:00 AM in the given UTC offset string (e.g. "+08:00"). */

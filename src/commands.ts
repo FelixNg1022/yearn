@@ -5,7 +5,7 @@ import { STRINGS } from "./lang.ts";
 
 export interface CommandResult {
   reply: string;
-  sideEffect?: "set_delete_pending" | "render_profile_card";
+  sideEffect?: "set_delete_pending" | "render_profile_card" | "send_daily_card";
 }
 
 export async function handleCommand(
@@ -43,6 +43,9 @@ export async function handleCommand(
     case "/profile":
       return { reply: "__RENDER_PROFILE_CARD__", sideEffect: "render_profile_card" };
 
+    case "/daily":
+      return { reply: "__SEND_DAILY_CARD__", sideEffect: "send_daily_card" };
+
     case "/setup":
       await db.setOnboardingState(user.phone, "pending_name");
       return { reply: STRINGS.askName[lang] };
@@ -62,6 +65,7 @@ function help(lang: Lang): string {
       "yearn — 命令一览",
       "/help        这条帮助",
       "/profile     查看你的个人卦盘",
+      "/daily       重新发送今日运势卡",
       "/history     最近 5 次卦",
       "/stats       总次数 + 应验率",
       "/methods     三种方法简介",
@@ -70,13 +74,14 @@ function help(lang: Lang): string {
       "/delete      删除所有数据",
       "",
       "直接发问题即可。含「小六壬 / liuren」切到小六壬。",
-      "问题 → 文字解读；每日运势卡每天早上 8 点（你的本地时间）自动发送。",
+      "问题 → 文字解读；每日运势卡每天早上 8 点（PDT）自动发送。",
     ].join("\n");
   }
   return [
     "yearn — commands",
     "/help        this message",
     "/profile     view your profile card",
+    "/daily       resend today's daily reading card",
     "/history     last 5 readings",
     "/stats       total count + hit rate",
     "/methods     short intro to each method",
@@ -85,7 +90,7 @@ function help(lang: Lang): string {
     "/delete      delete all your data",
     "",
     "just text a question. include '小六壬' or 'liuren' for 小六壬 method.",
-    "questions → text reading. daily fortune card auto-sends at 8am your local time.",
+    "questions → text reading. daily fortune card auto-sends at 8am PDT.",
   ].join("\n");
 }
 
