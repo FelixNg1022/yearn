@@ -118,7 +118,7 @@ export interface Db {
   setUserName(phone: string, name: string): Promise<void>;
   setDeletePending(phone: string, pending: 0 | 1): Promise<void>;
   deleteUser(phone: string): Promise<void>;
-  recordReading(r: Omit<ReadingRow, "id" | "followed_up">): Promise<string>;
+  recordReading(r: Omit<ReadingRow, "id" | "followed_up"> & { followed_up?: 0 | 1 }): Promise<string>;
   getRecentReadings(phone: string, limit: number): Promise<ReadingRow[]>;
   getPendingFollowUps(now: number): Promise<ReadingRow[]>;
   markFollowedUp(readingId: string): Promise<void>;
@@ -372,12 +372,13 @@ export async function openDb(url: string, authToken: string): Promise<Db> {
 
     async recordReading(r) {
       const id = ulid();
+      const followedUp = r.followed_up ?? 0;
       await client.execute({
         sql: `INSERT INTO readings (id, phone, question, method, cast_json, interpretation, lang, created_at, follow_up_at, followed_up, predicted_horizon_days, question_type, predicted_probability)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           id, r.phone, r.question, r.method, r.cast_json, r.interpretation, r.lang,
-          r.created_at, r.follow_up_at,
+          r.created_at, r.follow_up_at, followedUp,
           r.predicted_horizon_days ?? null,
           r.question_type ?? null,
           r.predicted_probability ?? null,

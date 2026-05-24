@@ -5,6 +5,7 @@ import {
   MAX_HORIZON_DAYS,
   MIN_HORIZON_DAYS,
 } from "../src/horizon.ts";
+import { resolveFollowUpSchedule } from "../src/query.ts";
 
 // A fixed Wednesday so weekday math is deterministic.
 const WED = new Date("2026-05-20T12:00:00Z");
@@ -69,6 +70,7 @@ describe("extractHorizonHeuristic — English", () => {
   test("open-ended question returns null", () => {
     expect(extractHorizonHeuristic("will I get the job?", "en", WED)).toBeNull();
     expect(extractHorizonHeuristic("should I move?", "en", WED)).toBeNull();
+    expect(extractHorizonHeuristic("will me and my girlfriend get married?", "en", WED)).toBeNull();
   });
 
   test("empty string returns null", () => {
@@ -150,5 +152,36 @@ describe("followUpMsFromHorizon", () => {
 
   test("zero buffer is allowed", () => {
     expect(followUpMsFromHorizon(5, 0)).toBe(5 * DAY);
+  });
+});
+
+describe("resolveFollowUpSchedule", () => {
+  const NOW = 1_700_000_000_000;
+  const DAY = 86_400_000;
+
+  test("no horizon → no follow-up scheduled", () => {
+    const result = resolveFollowUpSchedule({ horizonDays: null, bufferDays: 1, now: NOW });
+    expect(result.scheduleFollowUp).toBe(false);
+    expect(result.followedUp).toBe(1);
+    expect(result.followUpAt).toBe(NOW);
+  });
+
+  test("horizon present → schedules follow-up after event + buffer", () => {
+    const result = resolveFollowUpSchedule({ horizonDays: 3, bufferDays: 1, now: NOW });
+    expect(result.scheduleFollowUp).toBe(true);
+    expect(result.followedUp).toBe(0);
+    expect(result.followUpAt).toBe(NOW + 4 * DAY);
+  });
+
+  test("demo mode always schedules follow-up", () => {
+    const result = resolveFollowUpSchedule({
+      horizonDays: null,
+      demoFollowUpMs: 60_000,
+      bufferDays: 1,
+      now: NOW,
+    });
+    expect(result.scheduleFollowUp).toBe(true);
+    expect(result.followedUp).toBe(0);
+    expect(result.followUpAt).toBe(NOW + 60_000);
   });
 });

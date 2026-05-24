@@ -139,7 +139,7 @@ export const STRINGS = {
     zh: "记下来了：一半一半 🌗 宇宙说对了一半——这也算数！想补充细节就回「mixed 发生了什么」",
   },
   followUpNote: {
-    en: "(i'll check back when the time comes — reply yes / no / mixed!)",
-    zh: "（到时候我会来问结果的——回 yes / no / mixed！）",
+    en: "(i'll check back then — reply yes / no / mixed when it happens!)",
+    zh: "（到时候我会来问结果的——发生了回 yes / no / mixed！）",
   },
 } as const;

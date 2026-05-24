@@ -153,7 +153,6 @@ export async function route(
   const result = await runQuery(phone, trimmed, user, receivedAt, {
     db: deps.db,
     llm: deps.llm,
-    defaultFollowUpMs: config.followUpDays() * 24 * 60 * 60 * 1000,
     bufferDays: config.followUpBufferDays(),
     demoFollowUpMs: demoSecs !== undefined ? demoSecs * 1000 : undefined,
     useLlmHorizonFallback: config.useLlmHorizonFallback(),

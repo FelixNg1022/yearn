@@ -29,11 +29,41 @@ function formatCastSummary(method: "meihua" | "liuren", kernel: unknown): string
   return `🎴 梅花易数 · ${r.primary.name_zh} → ${r.changed.name_zh}`;
 }
 
+/** Only schedule outcome follow-ups when the question has a clear time horizon. */
+export function resolveFollowUpSchedule(options: {
+  horizonDays: number | null;
+  demoFollowUpMs?: number;
+  bufferDays: number;
+  now: number;
+}): { followUpAt: number; scheduleFollowUp: boolean; followedUp: 0 | 1 } {
+  const { horizonDays, demoFollowUpMs, bufferDays, now } = options;
+  if (demoFollowUpMs !== undefined) {
+    return { followUpAt: now + demoFollowUpMs, scheduleFollowUp: true, followedUp: 0 };
+  }
+  if (horizonDays != null) {
+    return {
+      followUpAt: now + followUpMsFromHorizon(horizonDays, bufferDays),
+      scheduleFollowUp: true,
+      followedUp: 0,
+    };
+  }
+  return { followUpAt: now, scheduleFollowUp: false, followedUp: 1 };
+}
+
+function buildReply(
+  method: "meihua" | "liuren",
+  kernel: unknown,
+  interpretation: string,
+  lang: Lang,
+  scheduleFollowUp: boolean,
+): string {
+  const note = scheduleFollowUp ? `\n\n${STRINGS.followUpNote[lang]}` : "";
+  return `${formatCastSummary(method, kernel)}\n\n${interpretation}${note}`;
+}
+
 export interface QueryDeps {
   db: Db;
   llm: LlmClient;
-  /** Fallback follow-up delay used when no horizon can be extracted from the question. */
-  defaultFollowUpMs: number;
   /** Days to wait *after* the predicted event before asking how it played out. */
   bufferDays: number;
   /**
@@ -62,7 +92,7 @@ export async function runQuery(
   predicted_probability: number | null;
   daily_scores: DailyScores | null;
 }> {
-  const { db, llm, defaultFollowUpMs, bufferDays, demoFollowUpMs, useLlmHorizonFallback } = deps;
+  const { db, llm, bufferDays, demoFollowUpMs, useLlmHorizonFallback } = deps;
   const method = detectMethod(text);
   const kernel = method === "liuren" ? castLiuren(receivedAt) : castMeihua(receivedAt);
   const lang: Lang = user.lang;
@@ -82,23 +112,19 @@ export async function runQuery(
     }
   }
 
-  // Demo mode strictly overrides everything else (used for live demos so the
-  // operator doesn't have to wait days for the scheduler to fire).
+  // Demo mode overrides; otherwise follow up only when we extracted a horizon.
   const now = receivedAt.getTime();
-  let followUpMs: number;
-  if (demoFollowUpMs !== undefined) {
-    followUpMs = demoFollowUpMs;
-  } else if (horizonDays != null) {
-    followUpMs = followUpMsFromHorizon(horizonDays, bufferDays);
-  } else {
-    followUpMs = defaultFollowUpMs;
-  }
+  const { followUpAt, scheduleFollowUp, followedUp } = resolveFollowUpSchedule({
+    horizonDays,
+    demoFollowUpMs,
+    bufferDays,
+    now,
+  });
 
   // Classify the question type in parallel with horizon extraction results.
   const classification = await llm.classifyQuestion(text, lang);
 
   const recent = await db.getRecentReadings(phone, 5);
-  const followUpAt = now + followUpMs;
 
   if (classification.type === "specific") {
     const prob = classification.probability ?? 50;
@@ -111,7 +137,7 @@ export async function runQuery(
       probability: prob,
     });
 
-    const reply = `${formatCastSummary(method, kernel)}\n\n${interpretation}\n\n${STRINGS.followUpNote[lang]}`;
+    const reply = buildReply(method, kernel, interpretation, lang, scheduleFollowUp);
 
     await db.recordReading({
       phone,
@@ -122,6 +148,7 @@ export async function runQuery(
       lang,
       created_at: now,
       follow_up_at: followUpAt,
+      followed_up: followedUp,
       predicted_horizon_days: horizonDays,
       question_type: "specific",
       predicted_probability: prob,
@@ -154,6 +181,7 @@ export async function runQuery(
     lang,
     created_at: now,
     follow_up_at: followUpAt,
+    followed_up: followedUp,
     predicted_horizon_days: horizonDays,
     question_type: "general",
     predicted_probability: null,
@@ -161,7 +189,7 @@ export async function runQuery(
 
   await db.incrementReadingsToday(phone, now);
 
-  const reply = `${formatCastSummary(method, kernel)}\n\n${interpretation}\n\n${STRINGS.followUpNote[lang]}`;
+  const reply = buildReply(method, kernel, interpretation, lang, scheduleFollowUp);
   return {
     reply,
     castJson: JSON.stringify(kernel),
