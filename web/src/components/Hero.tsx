@@ -82,7 +82,8 @@ export function Hero() {
           href="https://x.com/shimteri"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-display text-marigold-hi/60 hover:text-marigold-hi transition-colors"
+          className="font-display text-marigold-hi/60 hover:text-marigold-hi transition-colors"
+          style={{ fontSize: 'clamp(8px, 0.85vw, 12px)' }}
         >
           design by teri shim ✦
         </a>
