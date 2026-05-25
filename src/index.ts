@@ -55,23 +55,34 @@ Bun.serve({
 
         const projectId = config.projectId();
         const auth = Buffer.from(`${projectId}:${config.projectSecret()}`).toString("base64");
-        const createRes = await fetch(`https://spectrum.photon.codes/projects/${projectId}/users/`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Basic ${auth}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ type: "shared", phoneNumber: phone }),
-        });
-        if (!createRes.ok) {
-          const errText = await createRes.text();
+
+        // Retry up to 3 times with backoff on 429 from Spectrum user creation.
+        let createRes: Response | null = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          createRes = await fetch(`https://spectrum.photon.codes/projects/${projectId}/users/`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${auth}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ type: "shared", phoneNumber: phone }),
+          });
+          if (createRes.status !== 429) break;
+          console.log(JSON.stringify({
+            ts: new Date().toISOString(), level: "WARN", msg: "api/start spectrum 429 — retrying",
+            attempt, phone: phone.slice(-4),
+          }));
+          if (attempt < 3) await Bun.sleep(2_000 * attempt);
+        }
+        if (!createRes!.ok) {
+          const errText = await createRes!.text();
           console.error(JSON.stringify({
             ts: new Date().toISOString(), level: "ERROR", msg: "api/start spectrum user",
-            status: createRes.status, err: errText.slice(0, 300),
+            status: createRes!.status, err: errText.slice(0, 300),
           }));
           return Response.json({ error: "couldn't reach the fortune line, try again" }, { status: 502, headers: cors });
         }
-        const created = await createRes.json() as { data?: { assignedPhoneNumber?: string } };
+        const created = await createRes!.json() as { data?: { assignedPhoneNumber?: string } };
         const assigned = created.data?.assignedPhoneNumber;
         console.log(JSON.stringify({
           ts: new Date().toISOString(), level: "INFO", msg: "api/start ok",
