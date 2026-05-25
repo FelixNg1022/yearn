@@ -97,8 +97,8 @@ export function Hero() {
         <QRCodeSVG
           value={LANDING_URL}
           size={64}
-          bgColor="transparent"
-          fgColor="rgba(255,255,255,0.5)"
+          bgColor="#FFFFFF"
+          fgColor="#000000"
           level="M"
           style={{ width: 'clamp(48px, 5.5vw, 80px)', height: 'clamp(48px, 5.5vw, 80px)' }}
         />
