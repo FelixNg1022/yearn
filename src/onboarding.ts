@@ -40,6 +40,9 @@ export function parseDate(text: string): DateParts | null {
   // YYYYMMDD (no separators)
   const compact = t.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (compact && +compact[1]! > 1900) return { year: +compact[1]!, month: +compact[2]!, day: +compact[3]! };
+  // YYYY.MM.DD or YYYY/MM/DD or YYYY-MM-DD (already handled above, but also dot/slash variants)
+  const dotted = t.match(/^(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})$/);
+  if (dotted && +dotted[1]! > 1900) return { year: +dotted[1]!, month: +dotted[2]!, day: +dotted[3]! };
   return null;
 }
 
@@ -107,6 +110,8 @@ export async function handleOnboarding(
     case "pending_date": {
       const date = parseDate(text);
       if (!date) return STRINGS.invalidDate[lang];
+      const currentYear = new Date().getFullYear();
+      if (date.year > currentYear || date.year < 1900) return STRINGS.invalidDate[lang];
       await db.setOnboardingState(user.phone, "pending_time", {
         pending_date_json: JSON.stringify(date),
         pending_time_json: null,

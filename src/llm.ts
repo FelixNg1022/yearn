@@ -93,6 +93,11 @@ export interface LlmClient {
    * Called once during onboarding as a fallback after the static TZ_MAP misses.
    */
   resolveTimezone(location: string): Promise<string | null>;
+  /**
+   * Parse a natural-language profile update message into a structured intent.
+   * Returns null if the message isn't a recognisable profile update request.
+   */
+  parseProfileUpdate(text: string, lang: string): Promise<import("./profileUpdate.ts").ProfileUpdateIntent | null>;
 }
 
 const HORIZON_SYSTEM_PROMPT = `You extract the prediction horizon from a divination question.
@@ -325,6 +330,31 @@ Rules:
       if (typeof offset !== "string") return null;
       if (!/^[+-]\d{2}:\d{2}$/.test(offset)) return null;
       return offset;
+    },
+
+    async parseProfileUpdate(text, _lang) {
+      const raw = await chat(
+        `You parse a user's request to update their profile.
+Output strict JSON only — no prose, no markdown:
+  {"field": "name" | "birthday" | "city" | null, "value": "<extracted value>" | null}
+
+Rules:
+- "field" is "name" if they want to change their name/nickname.
+- "field" is "birthday" if they want to change their birth date.
+- "field" is "city" if they want to change their birth city/location/timezone.
+- "value" is the raw new value they provided (e.g. "Felix", "March 28, 2005", "Los Angeles").
+- If this is NOT a profile update request, or the field/value is unclear, return {"field": null, "value": null}.
+- Output JSON only. No code fences. No commentary.`,
+        `MESSAGE: ${text}\n\nReturn JSON.`,
+        40,
+      );
+      const parsed = parseJson<{ field: unknown; value: unknown }>(raw);
+      if (!parsed) return null;
+      if (parsed.field === null || parsed.value === null) return null;
+      const field = parsed.field;
+      if (field !== "name" && field !== "birthday" && field !== "city") return null;
+      if (typeof parsed.value !== "string" || !parsed.value.trim()) return null;
+      return { field, value: parsed.value.trim() };
     },
 
     async interpret(input) {

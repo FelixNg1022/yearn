@@ -7,6 +7,7 @@ import {
   useReducedMotion,
   AnimatePresence,
 } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
 import { GradientField } from './layers/GradientField'
 import { ArchLayer } from './layers/ArchLayer'
 import { CloudLayer } from './layers/CloudLayer'
@@ -14,6 +15,8 @@ import { TextAndCTA } from './layers/TextAndCTA'
 import { Florals } from './layers/Florals'
 import { MobileLayout } from './layers/MobileLayout'
 import { PhoneModal } from './PhoneModal'
+
+const LANDING_URL = 'https://yearn-three.vercel.app/'
 
 export function Hero() {
   const prefersReducedMotion = useReducedMotion()
@@ -87,6 +90,18 @@ export function Hero() {
         >
           design by teri shim ✦
         </a>
+      </div>
+
+      {/* QR code — bottom right, desktop only */}
+      <div className="absolute bottom-[6vh] right-[5vw] z-50 pointer-events-none hidden md:block">
+        <QRCodeSVG
+          value={LANDING_URL}
+          size={64}
+          bgColor="transparent"
+          fgColor="rgba(255,255,255,0.5)"
+          level="M"
+          style={{ width: 'clamp(48px, 5.5vw, 80px)', height: 'clamp(48px, 5.5vw, 80px)' }}
+        />
       </div>
 
       <AnimatePresence>

@@ -73,6 +73,10 @@ Bun.serve({
         }
         const created = await createRes.json() as { data?: { assignedPhoneNumber?: string } };
         const assigned = created.data?.assignedPhoneNumber;
+        console.log(JSON.stringify({
+          ts: new Date().toISOString(), level: "INFO", msg: "api/start ok",
+          phone: phone.slice(-4), assigned: assigned ?? null,
+        }));
         if (!assigned) {
           return Response.json({ error: "no fortune line assigned yet, try again later" }, { status: 502, headers: cors });
         }

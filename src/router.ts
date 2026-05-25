@@ -17,6 +17,7 @@ import { normalizeStone } from "./card/stones.ts";
 import type { ProfileCardData } from "./db.ts";
 import { sendText, sendCard, sendShareInvite } from "./spectrum/send.ts";
 import { config } from "./config.ts";
+import { looksLikeProfileUpdate, parseProfileUpdateIntent, applyProfileUpdate } from "./profileUpdate.ts";
 
 const SHARE_URL = "https://yearn-three.vercel.app/";
 
@@ -148,6 +149,15 @@ export async function route(
         }
         return;
       }
+    }
+  }
+
+  if (looksLikeProfileUpdate(trimmed)) {
+    const intent = await parseProfileUpdateIntent(trimmed, user.lang, deps.llm);
+    if (intent) {
+      const reply = await applyProfileUpdate(intent, user, deps.db, deps.llm);
+      await sendText(phone, reply);
+      return;
     }
   }
 
