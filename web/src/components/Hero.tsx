@@ -77,7 +77,7 @@ export function Hero() {
       </div>
 
       {/* Designer credit */}
-      <div className="absolute bottom-3 left-4 z-50 pointer-events-auto">
+      <div className="absolute bottom-3 left-4 z-50 pointer-events-auto hidden md:block">
         <a
           href="https://x.com/shimteri"
           target="_blank"

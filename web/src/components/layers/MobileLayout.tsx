@@ -47,8 +47,8 @@ export function MobileLayout({ reduceMotion: rm, onOpen }: { reduceMotion: boole
         />
       </motion.div>
 
-      {/* CTA */}
-      <div className="absolute bottom-[6vh] left-0 right-0 flex justify-center z-40">
+      {/* CTA + credit */}
+      <div className="absolute bottom-[5vh] left-0 right-0 flex flex-col items-center gap-4 z-40">
         <motion.div
           initial={rm ? false : { opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -61,13 +61,13 @@ export function MobileLayout({ reduceMotion: rm, onOpen }: { reduceMotion: boole
           <button
             onClick={onOpen}
             aria-label="Get your daily fortune"
-            className="relative flex flex-col items-center justify-center rounded-[28px] bg-white
+            className="relative inline-flex items-center justify-center rounded-full bg-white
               overflow-hidden
               shadow-[0_4px_24px_-8px_rgba(255,107,0,0.25)]
               active:scale-[0.97] transition-transform duration-300 ease-out
               focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-marigold-hi/40
               focus-visible:ring-offset-2 focus-visible:ring-offset-honey-deep"
-            style={{ padding: '32px 56px 36px', gap: '16px', minWidth: '240px' }}
+            style={{ padding: '18px 40px' }}
           >
             {!rm && (
               <span
@@ -77,16 +77,23 @@ export function MobileLayout({ reduceMotion: rm, onOpen }: { reduceMotion: boole
                 aria-hidden="true"
               />
             )}
-            <span className="relative flex items-center justify-center rounded-full bg-[#34DA51] w-14 h-14">
-              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="white" aria-hidden="true">
-                <path d="M12 2C6.48 2 2 6.04 2 11c0 2.52 1.18 4.79 3.08 6.41-.32 1.18-.97 2.74-1.88 3.59 1.65-.16 3.59-.83 5.07-1.84.9.25 1.85.39 2.83.39 5.52 0 10-4.04 10-9S17.52 2 12 2z" />
-              </svg>
-            </span>
-            <span className="relative font-display font-medium text-marigold-hi text-center leading-tight" style={{ fontSize: '28px' }}>
-              get your<br />daily fortune
+            <span className="relative font-display font-medium text-marigold-hi" style={{ fontSize: '28px' }}>
+              get your daily fortune
             </span>
           </button>
         </motion.div>
+
+        <motion.a
+          href="https://x.com/shimteri"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-display text-marigold-hi/60 hover:text-marigold-hi transition-colors"
+          initial={rm ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2.8, duration: 0.6 }}
+        >
+          design by teri shim ✦
+        </motion.a>
       </div>
     </div>
   )
