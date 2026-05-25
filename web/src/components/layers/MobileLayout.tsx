@@ -47,8 +47,8 @@ export function MobileLayout({ reduceMotion: rm, onOpen }: { reduceMotion: boole
         />
       </motion.div>
 
-      {/* CTA + credit */}
-      <div className="absolute bottom-[5vh] left-0 right-0 flex flex-col items-center gap-4 z-40">
+      {/* CTA */}
+      <div className="absolute bottom-[12vh] left-0 right-0 flex justify-center z-40">
         <motion.div
           initial={rm ? false : { opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -82,19 +82,24 @@ export function MobileLayout({ reduceMotion: rm, onOpen }: { reduceMotion: boole
             </span>
           </button>
         </motion.div>
+      </div>
 
-        <motion.a
+      {/* Designer credit — anchored to very bottom, centered under button */}
+      <motion.div
+        className="absolute bottom-4 left-0 right-0 flex justify-center z-40"
+        initial={rm ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2.8, duration: 0.6 }}
+      >
+        <a
           href="https://x.com/shimteri"
           target="_blank"
           rel="noopener noreferrer"
           className="text-xs font-display text-marigold-hi/60 hover:text-marigold-hi transition-colors"
-          initial={rm ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2.8, duration: 0.6 }}
         >
           design by teri shim ✦
-        </motion.a>
-      </div>
+        </a>
+      </motion.div>
     </div>
   )
 }
