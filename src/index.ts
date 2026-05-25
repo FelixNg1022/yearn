@@ -198,6 +198,11 @@ async function startApp(): Promise<void> {
                 phone: phone.slice(-4), err: String(err),
                 stack: err instanceof Error ? err.stack?.split("\n").slice(0, 4).join(" | ") : undefined,
               }));
+              // Best-effort fallback so the user isn't left in silence
+              try {
+                const { sendText } = await import("./spectrum/send.ts");
+                await sendText(phone, "something went sideways on our end 😅 try sending that again!");
+              } catch { /* truly best-effort */ }
             }
           });
           console.log(JSON.stringify({ ts: new Date().toISOString(), level: "INFO", msg: "responding done" }));
