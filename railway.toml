@@ -1,0 +1,20 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "bun run src/index.ts"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Only redeploy when bot source changes — not landing page (web/) or docs
+watchPatterns = [
+  "src/**",
+  "public/**",
+  "package.json",
+  "bun.lock",
+  "Dockerfile",
+  "nixpacks.toml",
+  "railway.toml",
+]
